@@ -72,7 +72,6 @@ my %options = ("quiet" => 0,
                "null" => 0,
                "report" => 0,
                "parallel" => 0,
-               "testsdir" => $ENV{'PRJ_HOME'}."/verification/tests",
                "libsdir" => $ENV{'PRJ_HOME'}."/verification/scripts");
 
 ################################################################################
@@ -82,6 +81,7 @@ $verify::interactive = 0;
 $verify::logfile = "verify.log";
 $verify::build_dir = "";
 $verify::run_dir = "";
+$verify::testsdir = $ENV{'PRJ_HOME'}."/verification/tests";
 
 $verify::VERSION = "Verify v2.2.0";
 $verify::AUTHOR = "Benjamin D. Richards";
@@ -123,7 +123,7 @@ sub init() {
         open(CONFIG, "<".$ENV{'PRJ_HOME'}."/verify.ini");
         while(<CONFIG>) {
             if (/testsdir=(.*)/) {
-                $options{'testsdir'} = $ENV{'PRJ_HOME'}.'/'.$1;
+                $verify::testsdir = $ENV{'PRJ_HOME'}.'/'.$1;
             }
             elsif (/libsdir=(.*)/) {
                 $options{'libsdir'} = $ENV{'PRJ_HOME'}.'/'.$1;
@@ -133,7 +133,7 @@ sub init() {
 
     my $now = localtime(); # Get timestamp
 
-    Parser::set_testsdir($options{testsdir});
+    Parser::set_testsdir($verify::testsdir);
     $sf_semaphore = Thread::Semaphore->new();
 
     $sf_semaphore->down();
@@ -146,7 +146,7 @@ sub init() {
     print $statusfile "Working directory: ".$root_dir."\n";
     print $statusfile "Install directory: ".$install_dir."\n";
     print $statusfile "User libs directory: ".$options{'libsdir'}."\n";
-    print $statusfile "Tests directory: ".$options{'testsdir'}."\n";
+    print $statusfile "Tests directory: ".$verify::testsdir."\n";
     print $statusfile "======================================================================\n";
     print $statusfile "\n";
     $sf_semaphore->up();
