@@ -10,15 +10,15 @@ use DB_File;
 package verify::TestIndexParser;
 
 # Function prototypes
-sub TestIndexParser::set_testsdir( $ );
-sub TestIndexParser::recursive_scan( $$ );
-sub TestIndexParser::update_index( $ );
-sub TestIndexParser::prune_comments( $ );
-sub TestIndexParser::find_test( $$ );
-sub TestIndexParser::get_test_file( $$ );
-sub TestIndexParser::quick_parse_file( $ );
-sub TestIndexParser::parse_test_file( $$$;$ );
-sub TestIndexParser::list_tests( );
+sub TestIndexParser::set_testsdir($);
+sub TestIndexParser::recursive_scan($$);
+sub TestIndexParser::update_index($);
+sub TestIndexParser::prune_comments($);
+sub TestIndexParser::find_test($$);
+sub TestIndexParser::get_test_file($$);
+sub TestIndexParser::quick_parse_file($);
+sub TestIndexParser::parse_test_file($$$;$);
+sub TestIndexParser::list_tests();
 
 # Root directory where test files will live under
 my $testsdir = "";
@@ -26,7 +26,7 @@ my $testsdir = "";
 # To set testsdir
 sub TestIndexParser::set_testsdir($) {
     $testsdir = $_[0];
-                                  }
+}
 
 ### recursive_scan() ###
 # Recursively scans from the root directory for *.test files, and calls a handler function on each file.
@@ -129,7 +129,7 @@ sub TestIndexParser::update_index($) {
     verify::log_status("Done!\n");
 
     return ($added_count, $removed_count);
-                                  }
+}
 
 ### find_test() ###
 # Searches the index for the test specified.
@@ -288,7 +288,7 @@ sub TestIndexParser::prune_comments($) {
         }
     }
     return $curr;
-                                    }
+}
 
 ### quick_parse_file() ###
 # Does a minimal parse operation on a test file, only extracing test name, configuration, and description.
@@ -341,7 +341,7 @@ sub TestIndexParser::quick_parse_file($) {
     close($file_in);
 
     return @test_list;
-                                      }
+}
 
 ### parse_test_file() ###
 # Parses test arguments specified in *.test files.
@@ -503,7 +503,7 @@ sub TestIndexParser::parse_test_file($$$;$) {
     $test->{'logstr'} = $test->{'config'}.'::'.$test->{'name'}.(@testparams ? ','.join(',', @testparams) : '');
 
     return $test;
-                                     }
+}
 
 ### list_tests() ###
 # Does a recursive search under the tests root directory and displays each tests' config, name, and description in a list.
