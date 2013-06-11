@@ -191,7 +191,6 @@ sub TestIndexParser::get_test_file($$) {
                     my $idx_value = $_[0];
 
                     $index_hash{$idx_key} = $idx_value;
-                    verify::tlog(0, "$idx_key exists : $index_hash{$idx_key}\n") if $index_hash{$idx_key};
                     $indexed_count ++;
                 }
             }
