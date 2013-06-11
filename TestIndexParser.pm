@@ -148,7 +148,6 @@ sub TestIndexParser::find_test($$) {
     if (exists $test_db{$config.'::'.$testname}) { # We found it! Close file and exit loop
         verify::log_status("Found it!\n");
         $testfile_str = $test_db{$config.'::'.$testname};
-        #close(IN);
     }
 
     if ($testfile_str eq "") {
@@ -179,7 +178,6 @@ sub TestIndexParser::get_test_file($$) {
         my $indexed_count = 0;
         mkdir "$ENV{PRJ_HOME}/.verify" unless (-d "$ENV{PRJ_HOME}/.verify");
         
-        # DEBUG testing Berkely DB file format
         my %index_hash;
         tie %index_hash, "DB_File", "$ENV{PRJ_HOME}/.verify/index.db", DB_File::O_CREAT|DB_File::O_RDWR, 0666, $DB_File::DB_BTREE or verify::tdie("Cannot tile filename: %!\n");
 
