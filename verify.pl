@@ -1100,7 +1100,7 @@ I<v2.2.1, June 13, 2013>
 
 =over 3
 
-item Enhancements:
+=item Enhancements:
 
 =over 3
 
