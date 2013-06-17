@@ -28,6 +28,6 @@ while (@ARGV > 0) {
 my $p = Pod::Simple::HTML->new;
 $p->output_string(\my $html);
 $p->parse_file('verify.pl');
-open my $out, '>', 'README.pod' or die "Cannot open 'out.html': $!\n";
+open my $out, '>', 'README.pod' or die "Cannot open 'README.pod': $!\n";
 print $out $html;
 exit;
