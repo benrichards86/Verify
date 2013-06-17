@@ -1078,6 +1078,42 @@ B<NOTE:> F<Your test source> contains the code for your actual test. It may invo
 
 =item *
 
+I<v.2.2.2, June 17, 2013>
+
+=over 3
+
+=item Features:
+
+=over 3
+
+=item *
+
+Adding a new module that uses CSV files and SQL queries for test indexing. Supports indexing of additional metadata alongside test name and file (for instance, line number). This should be more useful for indexing tests in a few, very large .test files.
+
+=back
+
+=back
+
+=item *
+
+I<v2.2.1, June 13, 2013>
+
+=over 3
+
+item Enhancements:
+
+=over 3
+
+=item *
+
+Switched over from using a flat, sequential text file for the index, to using the Berkeley DB_FILE format and a BTree container structure. This should allow indexes to scale to larger sizes without introducing a significant performance penalty.
+
+=back
+
+=back
+
+=item *
+
 I<v2.2.0, May 13, 2013>
 
 =over 3
