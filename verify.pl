@@ -83,7 +83,7 @@ $verify::build_dir = "";
 $verify::run_dir = "";
 $verify::testsdir = $ENV{'PRJ_HOME'}."/verification/tests";
 
-$verify::VERSION = "Verify v2.2.0";
+$verify::VERSION = "Verify v2.2.2";
 $verify::AUTHOR = "Benjamin D. Richards";
 
 ################################################################################
