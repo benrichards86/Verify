@@ -1,0 +1,21 @@
+# Example test file for Verify testbed
+
+test: example1
+      description=Example test \#1.
+      config=c1
+endtest
+
+test: example2
+      description=Example test \#2.
+      config=c1
+endtest
+
+test: example3
+      description=Example test \#3.
+      config=c2
+endtest
+
+test: example4
+      description=Example test \#4.
+      config=c2
+endtest
