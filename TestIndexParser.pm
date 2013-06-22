@@ -3,21 +3,21 @@
 # Benjamin Richards, (c) 2012
 
 use strict;
-use Tie::File;
 use List::Uniq ':all';
 use DB_File;
 
 package verify::TestIndexParser;
 
 # Function prototypes
-sub TestIndexParser::set_testsdir($);
-sub TestIndexParser::recursive_scan($$);
-sub TestIndexParser::update_index($);
-sub TestIndexParser::prune_comments($);
-sub TestIndexParser::find_test($$);
-sub TestIndexParser::get_test_file($$);
-sub TestIndexParser::quick_parse_file($);
-sub TestIndexParser::parse_test_file($$$;$);
+sub TestIndexParser::set_testsdir( $ );
+sub TestIndexParser::recursive_scan( $$ );
+sub TestIndexParser::update_index( $ );
+sub TestIndexParser::prune_comments( $ );
+sub TestIndexParser::find_test( $$ );
+sub TestIndexParser::test_exists( $$$;$ );
+sub TestIndexParser::get_test_file( $$ );
+sub TestIndexParser::quick_parse_file( $ );
+sub TestIndexParser::parse_test_file( $$$;$ );
 sub TestIndexParser::list_tests();
 
 # Root directory where test files will live under
@@ -25,7 +25,7 @@ my $testsdir = "";
 
 # To set testsdir
 sub TestIndexParser::set_testsdir($) {
-    $testsdir = $_[0];
+    $testsdir = "$_[0]";
 }
 
 ### recursive_scan() ###
@@ -93,7 +93,7 @@ sub TestIndexParser::update_index($) {
         }
         else {
             # Something went horribly wrong. The file should have been already verified to exist.
-            verify::tdie("Unable to open test file!\n$!\n File: $testsdir/$currfile\n");
+            verify::tdie("Unable to open test file when adding unindexed tests!\n$!\n File: $testsdir/$currfile\n");
         }
     }
 
@@ -157,6 +157,39 @@ sub TestIndexParser::find_test($$) {
     return $testfile_str;
 }
 
+### test_exists() ###
+# Verifies that the test we want exists at the location specified. Searches only the first 
+# test block encountered.
+# Parameters:
+#   - Filename (incl. path) of .test file to look inside
+#   - Test name
+#   - Test configuration
+#   - Line number to jump to in .test file (optional)
+# Returns:
+#   - 1 for found, 0 for not found.
+###
+sub TestIndexParser::test_exists( $$$;$ ) {
+    my ($file, $name, $config, $line_number) = @_;
+    my $found = 0;
+    my $testfile_in;
+
+    open($testfile_in, "<$testsdir/$file") or verify::tdie("Unable to open test file while checking for test!\n$!\n File: $testsdir/$file\n");
+
+    if ($line_number) {
+        seek($testfile_in, $line_number, 0);
+    }
+
+    my $line = "";
+    do {
+        $line = <$testfile_in>;
+        $found = 1 if ($line =~ m/^\s*config=$config\s*$/);
+    } while ($line !~ m/^\s*endtest\s*$/ && $found == 0);
+
+    close($testfile_in);
+
+    return $found;
+}
+
 ### get_test_file() ###
 # Finds the path to the test file in which the provided config::test pair is defined.
 # Parameters:
@@ -193,7 +226,7 @@ sub TestIndexParser::get_test_file($$) {
                 }
             }
             else {
-                verify::tdie("Unable to open test file!\n$!\n File: $testsdir/$_[0]\n");
+                verify::tdie("Unable to open test file when creating index!\n$!\n File: $testsdir/$_[0]\n");
             }
         };
         
@@ -224,27 +257,12 @@ sub TestIndexParser::get_test_file($$) {
         $testfile_str = TestIndexParser::find_test($config, $testname);
 
         if ($testfile_str eq "") { # Still can't find it? Then it must not exist.
-            verify::tdie("The test ".$config."::".$testname." cound not be found!\n");
+            verify::tdie("The test ".$config."::".$testname." could not be found!\n");
         }
     }
     else {
         # We found the test in the index, but now we need to make sure it actually exists where it says it does.
-        my $found = 0;
-        my $testfile_in;
-        verify::log_status("Checking test file for test... ");
-        open($testfile_in, "<$testsdir/$testfile_str") or verify::tdie("Unable to open test file!\n$!\n File: $testsdir/$testfile_str\n");
-        my $line;
-        do {
-            $line = <$testfile_in>;
-            if ($line =~ m/^\s*test:\s*$testname\s*$/) {
-                my $line = "";
-                do {
-                    $line = <$testfile_in>;
-                    $found = 1 if ($line =~ m/^\s*config=$config\s*$/);
-                } while ($line !~ m/^\s*endtest\s*$/ && $found == 0);
-            }
-        } while($found == 0 && !eof($testfile_in));
-        close($testfile_in);
+        my $found = TestIndexParser::test_exists($testfile_str, $testname, $config);
 
         # Couldn't find the test where the index specified! Reindex and look again.
         if ($found == 0) {
@@ -368,7 +386,7 @@ sub TestIndexParser::parse_test_file($$$;$) {
     my $name = $_[2];
     my @testparams = @{$_[3]} if (@_ > 3);
 
-    open(TEST, "<", $testfile) or verify::tdie("Unable to open test file!\n$!\n File: $testfile\n");
+    open(TEST, "<", $testfile) or verify::tdie("Unable to open test file when parsing test!\n$!\n File: $testfile\n");
     verify::log_status("Parsing test file: ".$testfile."\n");
 
     my $curr;
@@ -517,7 +535,7 @@ sub TestIndexParser::list_tests() {
             }
         }
         else {
-            verify::tdie("Unable to open test file!\n$!\n File: $testsdir/$_[0]\n");
+            verify::tdie("Unable to open test file when listing tests!\n$!\n File: $testsdir/$_[0]\n");
         }
     };
 

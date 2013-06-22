@@ -7,28 +7,43 @@ VERIFY_HOME=..
 export PRJ_HOME=`echo $PWD | sed 's/ /\\ /g'`
 alias verify='$VERIFY_HOME/verify.pl'
 
-function echo_error {
-    echo "test.sh> Failed!" > /dev/stderr
-    exit -1
-}
-
-function echo_pass {
-    echo "test.sh> Ok!"
-}
-
 function clean {
     echo "Cleaning test environment..."
     make --directory $PRJ_HOME clean
     rm -rf $PRJ_HOME/.verify $PRJ_HOME/verify $PRJ_HOME/verify_status* $PRJ_HOME/verify.log
 }
 
+function _run_test_expect_fail {
+    verify $1
+    if [[ $? == 0 ]]; then
+        echo "test.sh> Failed!" > /dev/stderr
+        echo ""
+        exit 255
+    else
+        echo "test.sh> Ok!"
+        echo ""
+    fi
+}
+
+function _run_test_expect_pass {
+    verify $1
+    if [[ $? > 0 ]]; then
+        echo "test.sh> Failed!" > /dev/stderr
+        echo ""
+        exit 255
+    else
+        echo "test.sh> Ok!"
+        echo ""
+    fi
+}
+
 function test {
     echo "Testing..."
-    verify -h
-    verify -p
-    ( verify c1::example1 || echo_error ) && echo_pass
-    ( verify c2::example3 || echo_error ) && echo_pass
-    ( verify c1::example4 && echo_error) || echo_pass
+    _run_test_expect_pass -h
+    _run_test_expect_pass -p
+    _run_test_expect_pass c1::example1
+    _run_test_expect_pass c2::example3
+    _run_test_expect_fail c1::example4
 }
 
 function usage {

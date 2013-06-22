@@ -178,7 +178,7 @@ sub init() {
     $report_semaphore->up();
     }
 
-    push @INC, $options{'libsdir'};
+    unshift @INC, $options{'libsdir'};
     eval "require build_test";
     tdie($@) if $@;
     eval "require run_test";
@@ -336,11 +336,11 @@ sub init_logs() {
         my $ec;
 
         if (-e $verify::logfile) {
-            log_status("Logfile exists at ".Cwd::abs_path("./".$verify::logfile).". Backing up to ".Cwd::abs_path("./verify.old.log").".\n");
-            copy(Cwd::abs_path("./".$verify::logfile), Cwd::abs_path("./verify.old.log"));
+            log_status("Logfile exists at ".Cwd::abs_path("./".$verify::logfile).". Backing up to ".Cwd::getcwd()."/verify.old.log".".\n");
+            copy(Cwd::abs_path("./".$verify::logfile), Cwd::getcwd()."/verify.old.log");
         }
 
-        log_status("Creating new log file ".Cwd::abs_path("./".$verify::logfile)."\n");
+        log_status("Creating new log file ".Cwd::getcwd()."/".$verify::logfile."\n");
         $ec = open($logfile, ">".$verify::logfile);
         
         if ($ec == 0) {
@@ -351,7 +351,7 @@ sub init_logs() {
             $logfile->autoflush(1);
         }
         
-        log_status("Creating new log file ".Cwd::abs_path("./".$verify::logfile).".error\n");
+        log_status("Creating new log file ".Cwd::getcwd()."/".$verify::logfile.".error\n");
         $ec = open($errfile, ">".$verify::logfile.".error");
         
         if ($ec == 0) {
@@ -579,7 +579,7 @@ TEST_LOOP: foreach my $p_curr_test (@tests) {
         }
 
         # Init steps
-        $test_dir = Cwd::abs_path("./".$curr_test{'id'});
+        $test_dir = Cwd::getcwd().'/'.$curr_test{'id'};
         mkdir $test_dir or tdie("Unable to create test directory! $!\n") if (!-d $test_dir);
         log_status("Entering: ".$test_dir."\n");
         chdir $test_dir or tdie("Unable to cd into test directory! $!\n");
@@ -602,8 +602,8 @@ TEST_LOOP: foreach my $p_curr_test (@tests) {
         unlink(glob("./*.")); # Delete any existing files so we don't accumulate any from previous runs
         open(TEMP, ">./${testfile_header}.") and close(TEMP) or tlog(1, "Failed to create test header file!\n");
         
-        $verify::build_dir = Cwd::abs_path("./1");
-        $verify::run_dir = Cwd::abs_path("./2");
+        $verify::build_dir = Cwd::getcwd()."/1";
+        $verify::run_dir = Cwd::getcwd()."/2";
         
         # Build flow
         if ($options{'build'} == 1) {
