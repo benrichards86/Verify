@@ -8,7 +8,7 @@ export PRJ_HOME=`echo $PWD | sed 's/ /\\ /g'`
 alias verify='$VERIFY_HOME/verify.pl'
 
 function echo_error {
-    echo "test.sh> Failed!" &1> /dev/stderr
+    echo "test.sh> Failed!" > /dev/stderr
     exit -1
 }
 
@@ -18,6 +18,7 @@ function echo_pass {
 
 function clean {
     echo "Cleaning test environment..."
+    make --directory $PRJ_HOME clean
     rm -rf $PRJ_HOME/.verify $PRJ_HOME/verify $PRJ_HOME/verify_status* $PRJ_HOME/verify.log
 }
 
@@ -46,8 +47,12 @@ function usage {
     exit;
 }
 
-type $1 > /dev/null || usage
-
-$1
+if [[ `type -t $1` == "function" ]]; then
+    $1
+else
+    echo "Invalid option: $1" > /dev/stderr
+    echo ""
+    usage
+fi
 
 

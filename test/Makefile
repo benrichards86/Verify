@@ -1,5 +1,7 @@
 # Example dummy makefile for Verify testbed
 
+.PHONY: all build run clean
+
 all:
 
 build:
