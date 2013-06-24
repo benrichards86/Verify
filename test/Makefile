@@ -6,11 +6,11 @@ all:
 
 build:
 	@echo "Build target called."
-	touch build
+	@touch build
 
 run:
 	@echo "Run target called."
-	touch run
+	@touch run
 
 clean:
 	@echo "Clean target called."
