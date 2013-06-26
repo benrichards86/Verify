@@ -5,6 +5,7 @@
 use strict;
 use List::Uniq ':all';
 use DB_File;
+use TestFileParser;
 
 package verify::TestIndexParser;
 
