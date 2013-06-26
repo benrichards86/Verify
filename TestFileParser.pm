@@ -264,3 +264,5 @@ sub TestFileParser::prune( $ ) {
 
     return $curr;
 }
+
+1;
