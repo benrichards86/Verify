@@ -36,7 +36,7 @@ my @instr_fields = qw/keyword modifier scope data data_action/;
 sub TestFileParser::open( $ );
 sub TestFileParser::close();
 sub TestFileParser::get_next_instruction();
-sub TestFileParser::prune( $ );
+sub prune( $ );
 
 # Global variables
 $TestFileParser::filename = "";
@@ -100,6 +100,10 @@ sub TestFileParser::get_next_instruction() {
         return ();
     }
 
+    if ($file_index >= @file_arr) {
+        return ();
+    }
+
     my @instruction = ();
     my ($keyword, $modifier, $scope, $data, $data2, $data_action);
 
@@ -109,9 +113,8 @@ sub TestFileParser::get_next_instruction() {
         $currline = $file_arr[$file_index];
         $file_index ++;
         
-        $currline = TestFileParser::prune($currline);
-    } while ($currline =~ m/^$/ );
-
+        $currline = prune($currline);
+    } while ($currline =~ m/^$/);
 
     if ($currline =~ m/^test:\s*(\w+)$/) {
         if ($current_scope != -1) {
@@ -121,9 +124,9 @@ sub TestFileParser::get_next_instruction() {
         $keyword = "test";
         $data = $1;
         $current_scope = $next_scope_number;
+        $scope = $current_scope;
 
         undef $modifier;
-        undef $scope;
         undef $data2;
         undef $data_action;
     }
@@ -235,10 +238,6 @@ sub TestFileParser::get_next_instruction() {
 
     @instruction = ($keyword, $modifier, $scope, $data, $data2, $data_action);
 
-    #### DEBUG ####
-    print "[ ".join(",", @instruction)." ]\n";
-    #### DEBUG ####
-    
     return @instruction;
 }
 
@@ -249,7 +248,7 @@ sub TestFileParser::get_next_instruction() {
 # Returns:
 #   - The pruned string
 ###
-sub TestFileParser::prune( $ ) {
+sub prune( $ ) {
     my $curr = $_[0];
     if ($curr ne "") {
         if ($curr =~ m/(?<=\\)#.*/) {

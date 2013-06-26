@@ -1,6 +1,6 @@
 #!/bin/sh
-# test.sh
-# Runs tests on Verify tool.
+# do.sh
+# Runs tests on Verify tool and libraries.
 
 # Set up test environment
 VERIFY_HOME=..
@@ -16,11 +16,11 @@ function clean {
 function _run_test_expect_fail {
     verify $1
     if [[ $? == 0 ]]; then
-        echo "test.sh> Failed!" > /dev/stderr
+        echo "do.sh> Failed!" > /dev/stderr
         echo ""
         exit 255
     else
-        echo "test.sh> Ok!"
+        echo "do.sh> Ok!"
         echo ""
     fi
 }
@@ -28,11 +28,11 @@ function _run_test_expect_fail {
 function _run_test_expect_pass {
     verify $1
     if [[ $? > 0 ]]; then
-        echo "test.sh> Failed!" > /dev/stderr
+        echo "do.sh> Failed!" > /dev/stderr
         echo ""
         exit 255
     else
-        echo "test.sh> Ok!"
+        echo "do.sh> Ok!"
         echo ""
     fi
 }
@@ -47,19 +47,38 @@ function test {
 }
 
 function usage {
-    echo "test.sh"
+    echo "do.sh"
     echo "Runs tests on the Verify tool."
     echo "(c) Benjamin Richards, 2013"
     echo ""
     echo "Usage:"
-    echo "  test.sh [target]"
+    echo "  do.sh [target]"
     echo ""
     echo "Targets:"
-    echo "  clean  - Cleans test environment of temporary, result, and log files."
-    echo "  test   - Runs the tests."
-    echo "  usage  - Prints this usage information."
+    echo "  clean      - Cleans test environment of temporary, result, and log files."
+    echo "  test       - Runs the tests."
+    echo "  test_parse - Runs a canned test on the TestFileParser module."
+    echo "  usage      - Prints this usage information."
     echo ""
     exit;
+}
+
+function test_parser {
+    perl -I.. -E '
+use TestFileParser;
+
+TestFileParser::open("example1.test");
+my @instruction;
+
+do {
+    @instruction = TestFileParser::get_next_instruction();
+    print "Got instruction: [".join(",",@instruction)."]\n";
+} while(@instruction);
+
+TestFileParser::close();
+exit;
+'
+
 }
 
 if [[ `type -t $1` == "function" ]]; then
