@@ -37,6 +37,7 @@ sub TestFileParser::open( $ );
 sub TestFileParser::close();
 sub TestFileParser::get_next_instruction();
 sub prune( $ );
+sub plog( $$ );
 
 # Global variables
 $TestFileParser::filename = "";
@@ -49,6 +50,26 @@ my $current_scope = -1;
 my $scoping_mode = -1;  # 0 for multiple tests per file, 1 for single test per file
 
 my $next_scope_number = 0;
+
+### plog() ###
+# Logs a message to standard output or standard error.
+# Parameters:
+#   - 0 for standard output, 1 for standard error.
+#   - String message to log.
+###
+sub plog( $$ ) {
+    if (exists &verify::tlog) {
+        verify::tlog(@_);
+    }
+    else {
+        if ($_[0] == 0) {
+            print $_[1];
+        }
+        else {
+            print STDERR $_[1];
+        }
+    }
+}
 
 ### open() ###
 # Opens a file for parsing. Note that this module is state-based, so you cannot have multiple files open concurrently.
@@ -100,25 +121,26 @@ sub TestFileParser::get_next_instruction() {
         return ();
     }
 
-    if ($file_index >= @file_arr) {
-        return ();
-    }
-
     my @instruction = ();
     my ($keyword, $modifier, $scope, $data, $data2, $data_action);
 
-    my $currline;
+    my $curr_line;
 
     do {
-        $currline = $file_arr[$file_index];
+        if ($file_index >= @file_arr) {
+            return ();
+        }
+
+        $curr_line = $file_arr[$file_index];
         $file_index ++;
         
-        $currline = prune($currline);
-    } while ($currline =~ m/^$/);
+        $curr_line = prune($curr_line);
+    } while ($curr_line =~ m/^$/);
 
-    if ($currline =~ m/^test:\s*(\w+)$/) {
+    if ($curr_line =~ m/^test:\s*(\w+)$/) {
         if ($current_scope != -1) {
-            #TODO: error...
+            plog(1, "Error: Test scopes cannot be nested!\n [".$TestFileParser::filename." @ ".$file_index."]  ".$curr_line."\n");
+            return ();
         }
 
         $keyword = "test";
@@ -130,9 +152,10 @@ sub TestFileParser::get_next_instruction() {
         undef $data2;
         undef $data_action;
     }
-    elsif ($currline =~ m/^endtest$/) {
+    elsif ($curr_line =~ m/^endtest$/) {
         if ($current_scope == -1) {
-            #TODO: error...
+            plog(1, "Error: Found 'endtest' with no matching 'test'!\n [".$TestFileParser::filename." @ ".$file_index."]  ".$curr_line."\n");
+            return ();
         }
 
         $keyword = "endtest";
@@ -145,12 +168,14 @@ sub TestFileParser::get_next_instruction() {
         undef $data2;
         undef $data_action;
     }
-    elsif ($currline =~ m/^name=(\w+)$/) {  # 'name' keyword (for scoping mode 1)
+    elsif ($curr_line =~ m/^name=(\w+)$/) {  # 'name' keyword (for scoping mode 1)
         if ($scoping_mode != 1) {
-            #TODO: error...
+            plog(1, "Error: Keyword 'name' not allowed for scoping mode 0!\n [".$TestFileParser::filename." @ ".$file_index."]  ".$curr_line."\n");
+            return ();
         }
         if ($current_scope == -1) {
-            #TODO: error...
+            plog(1, "Error: No scope was set!\n [".$TestFileParser::filename." @ ".$file_index."]  ".$curr_line."\n");
+            return ();
         }
 
         $keyword = "name";
@@ -160,12 +185,13 @@ sub TestFileParser::get_next_instruction() {
         undef $data2;
         undef $modifier;
     }
-    elsif ($currline =~ m/^define\s+(\w+\s+)?\w+(\+=|=).*$/) { # 'define' keyword
+    elsif ($curr_line =~ m/^define\s+(\w+\s+)?\w+(\+=|=).*$/) { # 'define' keyword
         if ($current_scope == -1) {
-            #TODO: error...
+            plog(1, "Error: Keyword 'define' only allowed within a test's scope!\n [".$TestFileParser::filename." @ ".$file_index."]  ".$curr_line."\n");
+            return ();
         }
 
-        if ($currline =~ m/^define\s+(\w+)(\+=|=)(.+)$/) {  # no modifier
+        if ($curr_line =~ m/^define\s+(\w+)(\+=|=)(.+)$/) {  # no modifier
             $keyword = "define";
             $scope = $current_scope;
             $data = $1;
@@ -173,7 +199,7 @@ sub TestFileParser::get_next_instruction() {
             $data2 = $3;
             undef $modifier;
         }
-        elsif ($currline =~ m/^define\s+build\s+(\w+)(\+=|=)(.+)$/) {  # 'build' modifier
+        elsif ($curr_line =~ m/^define\s+build\s+(\w+)(\+=|=)(.+)$/) {  # 'build' modifier
             $keyword = "define";
             $modifier = "build";
             $scope = $current_scope;
@@ -181,7 +207,7 @@ sub TestFileParser::get_next_instruction() {
             $data_action = $2;
             $data2 = $3;
         }
-        elsif ($currline =~ m/^define\s+run\s+(\w+)(\+=|=)(.+)$/) {  # 'run' modifier
+        elsif ($curr_line =~ m/^define\s+run\s+(\w+)(\+=|=)(.+)$/) {  # 'run' modifier
             $keyword = "define";
             $modifier = "run";
             $scope = $current_scope;
@@ -190,15 +216,15 @@ sub TestFileParser::get_next_instruction() {
             $data2 = $3;
         }
         else {
-            #TODO: error...
-
-            #$currline =~ m/^define\s+(\w+)\s+\w+=.*$/;
-            #verify::tdie("Unexpected argument to define in test definition file! Line: ".TEST->input_line_number()."\n File: ".$testfile."\n Argument: ".$1."\n");
+            $curr_line =~ m/^define\s+(\w+)\s+\w+=.*$/;
+            plog(1, "Error: Unexpected argument to 'define' in test definition file!\n [".$TestFileParser::filename." @ ".$file_index."]  ".$curr_line."\n");
+            return ();
         }
     }
-    elsif ($currline =~ m/^description=(.*)$/) {
+    elsif ($curr_line =~ m/^description=(.*)$/) {
         if ($current_scope == -1) {
-            #TODO: error...
+            plog(1, "Error: Keyword 'description' only allowed within a test's scope!\n [".$TestFileParser::filename." @ ".$file_index."]  ".$curr_line."\n");
+            return ();
         }
 
         $keyword = "description";
@@ -208,9 +234,10 @@ sub TestFileParser::get_next_instruction() {
         undef $data2;
         undef $data_action;
     }
-    elsif ($currline =~ m/^config=(.*)$/) {
+    elsif ($curr_line =~ m/^config=(.*)$/) {
         if ($current_scope == -1) {
-            #TODO: error...
+            plog(1, "Error: Keyword 'config' only allowed within a test's scope!\n [".$TestFileParser::filename." @ ".$file_index."]  ".$curr_line."\n");
+            return ();
         }
 
         $keyword = "config";
@@ -220,9 +247,10 @@ sub TestFileParser::get_next_instruction() {
         undef $data2;
         undef $data_action;
     }
-    elsif ($currline =~ m/^params(\+=|=)(.*)$/) {
+    elsif ($curr_line =~ m/^params(\+=|=)(.*)$/) {
         if ($current_scope == -1) {
-            #TODO: error...
+            plog(1, "Error: Keyword 'params' only allowed within a test's scope!\n [".$TestFileParser::filename." @ ".$file_index."]  ".$curr_line."\n");
+            return ();
         }
 
         $keyword = "params";
@@ -233,7 +261,8 @@ sub TestFileParser::get_next_instruction() {
         undef $data2;
     }
     else {
-        #TODO: error...
+        plog(1, "Error: Bad syntax!\n [".$TestFileParser::filename." @ ".$file_index."]  ".$curr_line."\n");
+        return ();
     }
 
     @instruction = ($keyword, $modifier, $scope, $data, $data2, $data_action);

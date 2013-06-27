@@ -46,7 +46,7 @@ function test {
     _run_test_expect_fail c1::example4
 }
 
-function usage {
+function help {
     echo "do.sh"
     echo "Runs tests on the Verify tool."
     echo "(c) Benjamin Richards, 2013"
@@ -55,10 +55,10 @@ function usage {
     echo "  do.sh [target]"
     echo ""
     echo "Targets:"
-    echo "  clean      - Cleans test environment of temporary, result, and log files."
-    echo "  test       - Runs the tests."
-    echo "  test_parse - Runs a canned test on the TestFileParser module."
-    echo "  usage      - Prints this usage information."
+    echo "  clean       - Cleans test environment of temporary, result, and log files."
+    echo "  test        - Runs the tests."
+    echo "  test_parser - Runs a canned test on the TestFileParser module."
+    echo "  help        - Prints this usage information."
     echo ""
     exit;
 }
@@ -86,7 +86,7 @@ if [[ `type -t $1` == "function" ]]; then
 else
     echo "Invalid option: $1" > /dev/stderr
     echo ""
-    usage
+    help
 fi
 
 
