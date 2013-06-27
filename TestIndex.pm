@@ -1,4 +1,4 @@
-# TestIndexParser.pm
+# TestIndex.pm
 # Indexes tests and parses test files. Supports multiple tests per file.
 # Benjamin Richards, (c) 2012
 
@@ -7,25 +7,25 @@ use List::Uniq ':all';
 use DB_File;
 use TestFileParser;
 
-package verify::TestIndexParser;
+package verify::TestIndex;
 
 # Function prototypes
-sub TestIndexParser::set_testsdir( $ );
-sub TestIndexParser::recursive_scan( $$ );
-sub TestIndexParser::update_index( $ );
-sub TestIndexParser::prune_comments( $ );
-sub TestIndexParser::find_test( $$ );
-sub TestIndexParser::test_exists( $$$;$ );
-sub TestIndexParser::get_test_file( $$ );
-sub TestIndexParser::quick_parse_file( $ );
-sub TestIndexParser::parse_test_file( $$$;$ );
-sub TestIndexParser::list_tests();
+sub TestIndex::set_testsdir( $ );
+sub TestIndex::recursive_scan( $$ );
+sub TestIndex::update_index( $ );
+sub TestIndex::prune_comments( $ );
+sub TestIndex::find_test( $$ );
+sub TestIndex::test_exists( $$$;$ );
+sub TestIndex::get_test_file( $$ );
+sub TestIndex::quick_parse_file( $ );
+sub TestIndex::parse_test_file( $$$;$ );
+sub TestIndex::list_tests();
 
 # Root directory where test files will live under
 my $testsdir = "";
 
 # To set testsdir
-sub TestIndexParser::set_testsdir($) {
+sub TestIndex::set_testsdir($) {
     $testsdir = "$_[0]";
 }
 
@@ -35,13 +35,13 @@ sub TestIndexParser::set_testsdir($) {
 #   - Current directory to search under
 #   - Alias to anonymous function to call on each file found
 ###
-sub TestIndexParser::recursive_scan($$) {
+sub TestIndex::recursive_scan($$) {
     my ($root_dir, $handler) = @_;
 
     # Index any files in subdirectories
     my @dirs = grep{ -d } glob $root_dir.'/*';
     foreach my $curr_dir (@dirs) {
-        TestIndexParser::recursive_scan($curr_dir, $handler);
+        TestIndex::recursive_scan($curr_dir, $handler);
     }
 
     # Index any files in this directory
@@ -59,7 +59,7 @@ sub TestIndexParser::recursive_scan($$) {
 #   - Number of tests added
 #   - Number of tests removed
 ###
-sub TestIndexParser::update_index($) {
+sub TestIndex::update_index($) {
     my ($added_count, $removed_count) = (0, 0);
     my ($root_dir) = @_;
 
@@ -82,7 +82,7 @@ sub TestIndexParser::update_index($) {
     # Scan existing files for tests that aren't yet indexed...
     foreach my $currfile (@currfiles_arr) {
         $currfiles{$currfile} = 1; # In the meantime, store off our files into a hash for reference later, if we need it.
-        my @curr_tests = TestIndexParser::quick_parse_file($testsdir.'/'.$currfile);
+        my @curr_tests = TestIndex::quick_parse_file($testsdir.'/'.$currfile);
         if (@curr_tests) {
             foreach my $test (@curr_tests) {
                 if (! exists($test_db{$test->{'config'}.'::'.$test->{'name'}})) {
@@ -110,7 +110,7 @@ sub TestIndexParser::update_index($) {
             $found = 1 if ($curr eq $currfile);
         }
         if (!$found) {
-            my @tests = TestIndexParser::quick_parse_file($testsdir.'/'.$currfile);
+            my @tests = TestIndex::quick_parse_file($testsdir.'/'.$currfile);
             if (@tests) {
                 foreach my $test (@tests) {
                     $test_db{$test->{'config'}.'::'.$test->{'name'}} = $currfile;
@@ -123,7 +123,7 @@ sub TestIndexParser::update_index($) {
         }
     };
 
-    TestIndexParser::recursive_scan($testsdir, $callback);
+    TestIndex::recursive_scan($testsdir, $callback);
     
     # Index is updated!
     untie %test_db;
@@ -140,7 +140,7 @@ sub TestIndexParser::update_index($) {
 # Returns:
 #   - Filename of the test file, if found. Empty string if not found.
 ###
-sub TestIndexParser::find_test($$) {
+sub TestIndex::find_test($$) {
     my ($config, $testname) = @_;
     my $testfile_str = "";
     verify::log_status("Searching index for test... ");
@@ -169,7 +169,7 @@ sub TestIndexParser::find_test($$) {
 # Returns:
 #   - 1 for found, 0 for not found.
 ###
-sub TestIndexParser::test_exists( $$$;$ ) {
+sub TestIndex::test_exists( $$$;$ ) {
     my ($file, $name, $config, $line_number) = @_;
     my $found = 0;
     my $testfile_in;
@@ -199,7 +199,7 @@ sub TestIndexParser::test_exists( $$$;$ ) {
 # Returns:
 #   - Relative path and filename (under $testsdir) to the test file.
 ###
-sub TestIndexParser::get_test_file($$) {
+sub TestIndex::get_test_file($$) {
     my ($config, $testname) = @_;
     my $testfile_str = "";
     my $index_up2date = 0;
@@ -216,7 +216,7 @@ sub TestIndexParser::get_test_file($$) {
         tie %index_hash, "DB_File", "$ENV{PRJ_HOME}/.verify/index.db", DB_File::O_CREAT|DB_File::O_RDWR, 0666, $DB_File::DB_BTREE or verify::tdie("Cannot tile filename: %!\n");
 
         my $callback = sub {
-            my @curr_tests = TestIndexParser::quick_parse_file($testsdir.'/'.$_[0]);
+            my @curr_tests = TestIndex::quick_parse_file($testsdir.'/'.$_[0]);
             if (@curr_tests) {
                 foreach my $curr_test (@curr_tests) {
                     my $idx_key = $curr_test->{'config'}.'::'.$curr_test->{'name'};
@@ -231,7 +231,7 @@ sub TestIndexParser::get_test_file($$) {
             }
         };
         
-        TestIndexParser::recursive_scan($testsdir, $callback);
+        TestIndex::recursive_scan($testsdir, $callback);
         verify::log_status("Indexed $indexed_count tests.\n");
 
         untie %index_hash;
@@ -239,7 +239,7 @@ sub TestIndexParser::get_test_file($$) {
     }
 
     # Now, open index and look for test
-    $testfile_str = TestIndexParser::find_test($config, $testname);
+    $testfile_str = TestIndex::find_test($config, $testname);
 
     # Check if we found the file. If not, update the index (if not up to date).
     if ($testfile_str eq "" || !-e $testsdir.'/'.$testfile_str) { # It will remain unset if we didn't find it. Also trigger if it's indexed but the test file doesn't exist.
@@ -249,13 +249,13 @@ sub TestIndexParser::get_test_file($$) {
         else {
             # Index may not be up to date, so update the index now and then search again!
             verify::log_status("Test not found in index. Maybe the index isn't up to date?\n");
-            my ($added_count, $removed_count) = TestIndexParser::update_index($testsdir);
+            my ($added_count, $removed_count) = TestIndex::update_index($testsdir);
             $index_up2date = 1;
             verify::log_status("Updated index: added $added_count, removed $removed_count\n");
         }
 
         # Now that the index is updated, search for the test again...
-        $testfile_str = TestIndexParser::find_test($config, $testname);
+        $testfile_str = TestIndex::find_test($config, $testname);
 
         if ($testfile_str eq "") { # Still can't find it? Then it must not exist.
             verify::tdie("The test ".$config."::".$testname." could not be found!\n");
@@ -263,17 +263,17 @@ sub TestIndexParser::get_test_file($$) {
     }
     else {
         # We found the test in the index, but now we need to make sure it actually exists where it says it does.
-        my $found = TestIndexParser::test_exists($testfile_str, $testname, $config);
+        my $found = TestIndex::test_exists($testfile_str, $testname, $config);
 
         # Couldn't find the test where the index specified! Reindex and look again.
         if ($found == 0) {
             verify::log_status("Not found!\n");
             if ($index_up2date == 0) {
-                my ($added_count, $removed_count) = TestIndexParser::update_index($testsdir);
+                my ($added_count, $removed_count) = TestIndex::update_index($testsdir);
                 $index_up2date = 1;
                 verify::log_status("Updated index: added $added_count, removed $removed_count\n");
 
-                $testfile_str = TestIndexParser::find_test($config, $testname);
+                $testfile_str = TestIndex::find_test($config, $testname);
                 if ($testfile_str eq "") { # Still not found? It doesn't exist.
                     verify::tdie("The test ".$config."::".$testname." could not be found!\n");
                 }
@@ -294,7 +294,7 @@ sub TestIndexParser::get_test_file($$) {
 # Returns:
 #   - The pruned string
 ###
-sub TestIndexParser::prune_comments($) {
+sub TestIndex::prune_comments($) {
     my $curr = $_[0];
     if ($curr ne "") {
         if ($curr =~ m/(?<=\\)#.*/) {
@@ -313,7 +313,7 @@ sub TestIndexParser::prune_comments($) {
 # Returns:
 #   - Reference to an array of {name,config,description} hashes.
 ###
-sub TestIndexParser::quick_parse_file($) {
+sub TestIndex::quick_parse_file($) {
     my ($testfile) = @_;
     my @test_list = ();
 
@@ -321,7 +321,7 @@ sub TestIndexParser::quick_parse_file($) {
     open($file_in, "<$testfile") or return ();
     while (<$file_in>) {
         chomp;
-        $_ = TestIndexParser::prune_comments($_);
+        $_ = TestIndex::prune_comments($_);
         if (!/^\s*$/) {
             if (/^\s*test:\s*(\w+)\s*$/) {
                 my %test_info;
@@ -330,7 +330,7 @@ sub TestIndexParser::quick_parse_file($) {
                 do {
                     $curr = <$file_in>;
                     chomp $curr;
-                    $curr = TestIndexParser::prune_comments($curr);
+                    $curr = TestIndex::prune_comments($curr);
                     
                     # Token check
                     if ($curr !~ m/^\s*$/) {
@@ -369,7 +369,7 @@ sub TestIndexParser::quick_parse_file($) {
 # Returns:
 #   - A reference to the test information stored in a relational array in memory
 ###
-sub TestIndexParser::parse_test_file($$$;$) {
+sub TestIndex::parse_test_file($$$;$) {
     my $test = {"name" => "",          # Required: Identifies the test
                 "description" => "",   # Required: Describes the test
                 "config" => "",        # Required: Testbench config associated with the test
@@ -393,7 +393,7 @@ sub TestIndexParser::parse_test_file($$$;$) {
     my $curr;
     while ($curr = <TEST>) {
         chomp $curr;
-        $curr = TestIndexParser::prune_comments($curr);
+        $curr = TestIndex::prune_comments($curr);
         
         if ($curr !~ m/^\s*$/) {
             if ($curr =~ m/^\s*test:\s*($name)\s*$/) {
@@ -402,7 +402,7 @@ sub TestIndexParser::parse_test_file($$$;$) {
                 do {
                     $curr = <TEST>;
                     chomp $curr;
-                    $curr = TestIndexParser::prune_comments($curr);
+                    $curr = TestIndex::prune_comments($curr);
 
                     if ($curr !~ m/^\s*$/) {
                         my ($key, $value) = ('', '');
@@ -525,10 +525,10 @@ sub TestIndexParser::parse_test_file($$$;$) {
 # Does a recursive search under the tests root directory and displays each tests' config, name, and description in a list.
 # Note: This function does not use the index file.
 ###
-sub TestIndexParser::list_tests() {
+sub TestIndex::list_tests() {
     my $found_tests = 0;
     my $callback = sub {
-        my @curr_tests = TestIndexParser::quick_parse_file($testsdir.'/'.$_[0]);
+        my @curr_tests = TestIndex::quick_parse_file($testsdir.'/'.$_[0]);
         if (@curr_tests) {
             foreach my $curr_test (@curr_tests) {
                 verify::tlog(0, " ".$curr_test->{'config'}."::".$curr_test->{'name'}." - ".$curr_test->{'description'}."\n");
@@ -543,7 +543,7 @@ sub TestIndexParser::list_tests() {
     verify::log_status("Finding all test files...\n");
     verify::tlog(0, "Listing all available tests:\n");
     verify::tlog(0, "----------------------------\n");
-    TestIndexParser::recursive_scan($testsdir, $callback);
+    TestIndex::recursive_scan($testsdir, $callback);
     verify::log_status("Found $found_tests tests.\n");
     verify::tlog(0, "End test list.\n");
 }

@@ -1,31 +1,31 @@
-# TestIndexParserCSV.pm
-# Indexes tests and parses test files. Uses TestIndexParser module for test parsing.
+# TestIndexCSV.pm
+# Indexes tests and parses test files. Uses TestIndex module for test parsing.
 # Benjamin Richards, (c) 2013
 
 use strict;
 use DBI;
-use TestIndexParser;
+use TestIndex;
 
-package verify::TestIndexParserCSV;
+package verify::TestIndexCSV;
 
 # Function prototypes
-sub TestIndexParserCSV::set_testsdir( $ );
-sub TestIndexParserCSV::recursive_scan( $$ );
-sub TestIndexParserCSV::update_index( $ );
-sub TestIndexParserCSV::prune_comments( $ );
-sub TestIndexParserCSV::find_test( $$ );
-sub TestIndexParserCSV::get_test_file( $$ );
-sub TestIndexParserCSV::parse_test_file( $$$;$ );
-sub TestIndexParserCSV::list_tests();
+sub TestIndexCSV::set_testsdir( $ );
+sub TestIndexCSV::recursive_scan( $$ );
+sub TestIndexCSV::update_index( $ );
+sub TestIndexCSV::prune_comments( $ );
+sub TestIndexCSV::find_test( $$ );
+sub TestIndexCSV::get_test_file( $$ );
+sub TestIndexCSV::parse_test_file( $$$;$ );
+sub TestIndexCSV::list_tests();
 
 # Index API
-sub TestIndexParserCSV::open_index();
-sub TestIndexParserCSV::close_index();
-sub TestIndexParserCSV::create_index();
-sub TestIndexParserCSV::query_index( $;@ );
-sub TestIndexParserCSV::query_index_all( $;@ );
-sub TestIndexParserCSV::query_index_fast( $ );
-sub TestIndexParserCSV::next_id();
+sub TestIndexCSV::open_index();
+sub TestIndexCSV::close_index();
+sub TestIndexCSV::create_index();
+sub TestIndexCSV::query_index( $;@ );
+sub TestIndexCSV::query_index_all( $;@ );
+sub TestIndexCSV::query_index_fast( $ );
+sub TestIndexCSV::next_id();
 
 my $dbh;
 
@@ -34,10 +34,10 @@ my $dbh;
 # Returns:
 #   - The ID number
 ###
-sub TestIndexParserCSV::next_id() {
+sub TestIndexCSV::next_id() {
     my ($self, $sth, @params);
     my $dbh = $sth->{Database};
-    my @row = TestIndexParserCSV::query_index("SELECT COUNT(id) + 1 FROM tests");
+    my @row = TestIndexCSV::query_index("SELECT COUNT(id) + 1 FROM tests");
     return $row[0];
 }
 
@@ -45,9 +45,9 @@ sub TestIndexParserCSV::next_id() {
 # Creates a new index file
 #   - Handle to index
 ###
-sub TestIndexParserCSV::create_index() {
-    $dbh = TestIndexParserCSV::open_index();
-    my $success = TestIndexParserCSV::query_index_fast("CREATE TABLE tests ( id INT, name TEXT, config TEXT, file TEXT, line_number INT )");
+sub TestIndexCSV::create_index() {
+    $dbh = TestIndexCSV::open_index();
+    my $success = TestIndexCSV::query_index_fast("CREATE TABLE tests ( id INT, name TEXT, config TEXT, file TEXT, line_number INT )");
 
     if ($success > 0) {
         verify::tdie("Error creating index!\n".DBI->errstr."\n");
@@ -61,7 +61,7 @@ sub TestIndexParserCSV::create_index() {
 # Returns:
 #   - Handle to index
 ###
-sub TestIndexParserCSV::open_index() {
+sub TestIndexCSV::open_index() {
     verify::log_status("Opening index...\n");
     my @columns = qw(config name file line_number);
     $dbh = DBI->connect("dbi:CSV:f_dir=$ENV{PRJ_HOME}/.verify");
@@ -74,7 +74,7 @@ sub TestIndexParserCSV::open_index() {
 # Parameters:
 #   - Handle to index (optional)
 ###
-sub TestIndexParserCSV::close_index() {
+sub TestIndexCSV::close_index() {
     verify::log_status("Closing index.\n");
     $dbh->disconnect;
 }
@@ -87,7 +87,7 @@ sub TestIndexParserCSV::close_index() {
 # Returns:
 #   - Any results from query as an array of columns
 ###
-sub TestIndexParserCSV::query_index( $;@ ) {
+sub TestIndexCSV::query_index( $;@ ) {
     my @results = ();
     my $sql = shift @_;
     #verify::log_status("Executing SQL> ".$sql."; (".join(",",@_).")\n");
@@ -106,7 +106,7 @@ sub TestIndexParserCSV::query_index( $;@ ) {
 # Returns:
 #   - 0 for success, non-zero for failure.
 ###
-sub TestIndexParserCSV::query_index_fast( $ ) {
+sub TestIndexCSV::query_index_fast( $ ) {
     my $sql = shift @_;
     my @results = ();
 
@@ -122,7 +122,7 @@ sub TestIndexParserCSV::query_index_fast( $ ) {
 # Returns:
 #   - Reference to an array of rows returned from the SQL query
 ###
-sub TestIndexParserCSV::query_index_all( $;@ ) {
+sub TestIndexCSV::query_index_all( $;@ ) {
     my $sql = shift @_;
     #verify::log_status("Executing SQL> ".$sql."; (".join(",",@_).")\n");
     my $sth = $dbh->prepare($sql);
@@ -138,8 +138,8 @@ sub TestIndexParserCSV::query_index_all( $;@ ) {
 my $testsdir = "";
 
 # To set testsdir
-sub TestIndexParserCSV::set_testsdir( $ ) {
-    TestIndexParser::set_testsdir($_[0]);
+sub TestIndexCSV::set_testsdir( $ ) {
+    TestIndex::set_testsdir($_[0]);
     $testsdir = "$_[0]";
 }
 
@@ -151,37 +151,37 @@ sub TestIndexParserCSV::set_testsdir( $ ) {
 #   - Number of tests added
 #   - Number of tests removed
 ###
-sub TestIndexParserCSV::update_index($) {
+sub TestIndexCSV::update_index($) {
     my ($added_count, $removed_count) = (0, 0);
     my ($root_dir) = @_;
 
     verify::log_status("Updating index...\n");
 
     # Do a check for exist and remove those that don't exist anymore, storing those that do...
-    TestIndexParserCSV::open_index();
-    my $currfiles_arr = TestIndexParserCSV::query_index_all("SELECT DISTINCT file FROM tests");
+    TestIndexCSV::open_index();
+    my $currfiles_arr = TestIndexCSV::query_index_all("SELECT DISTINCT file FROM tests");
     foreach my $c (@{$currfiles_arr}) {
         my @c_arr = @{$c};
         if (!-e $testsdir.'/'.$c_arr[0]) {
-            TestIndexParserCSV::query_index_fast("DELETE FROM tests WHERE file=".$c_arr[0]) or verify::tdie("Error deleting test from index!\n".DBI->errstr."\n");
+            TestIndexCSV::query_index_fast("DELETE FROM tests WHERE file=".$c_arr[0]) or verify::tdie("Error deleting test from index!\n".DBI->errstr."\n");
         }
     }
     
 
     # Now, the index contains only previously indexed tests that still exist.
-    $currfiles_arr = TestIndexParserCSV::query_index_all("SELECT DISTINCT file FROM tests");
+    $currfiles_arr = TestIndexCSV::query_index_all("SELECT DISTINCT file FROM tests");
     my %currfiles;
 
     # Scan existing files for tests that aren't yet indexed...
     foreach my $currfile (@{$currfiles_arr}) {
         my @currfile_arr = @{$currfile};
         $currfiles{$currfile_arr[0]} = 1; # In the meantime, store off our files into a hash for reference later, if we need it.
-        my @curr_tests = TestIndexParser::quick_parse_file($testsdir.'/'.$currfile_arr[0]);
+        my @curr_tests = TestIndex::quick_parse_file($testsdir.'/'.$currfile_arr[0]);
         if (@curr_tests) {
             foreach my $test (@curr_tests) {
-                if (@{TestIndexParserCSV::query_index_all("SELECT * WHERE config=? AND name=?", $test->{'config'}, $test->{'name'})} == 0) {
+                if (@{TestIndexCSV::query_index_all("SELECT * WHERE config=? AND name=?", $test->{'config'}, $test->{'name'})} == 0) {
                     # Didn't index this test yet! Add it to our index.
-                    TestIndexParserCSV::query_index("INSERT INTO tests VALUES (?, ?, ?, ?, ?)", TestIndexParserCSV::next_id(),  $test->{'name'}, $test->{'config'}, $currfile, $test->{'line'});
+                    TestIndexCSV::query_index("INSERT INTO tests VALUES (?, ?, ?, ?, ?)", TestIndexCSV::next_id(),  $test->{'name'}, $test->{'config'}, $currfile, $test->{'line'});
                     $added_count++;
                 }
             }
@@ -199,12 +199,12 @@ sub TestIndexParserCSV::update_index($) {
         my $currfile = $_[0];
 
         # Checks if current found file is already indexed. If not, add its tests.
-        my @results = TestIndexParserCSV::query_index_all("SELECT * FROM tests WHERE file='".$currfile."'");
+        my @results = TestIndexCSV::query_index_all("SELECT * FROM tests WHERE file='".$currfile."'");
         if (@results == 0) {
-            my @tests = TestIndexParser::quick_parse_file($testsdir.'/'.$currfile);
+            my @tests = TestIndex::quick_parse_file($testsdir.'/'.$currfile);
             if (@tests) {
                 foreach my $test (@tests) {
-                    TestIndexParserCSV::query_index("INSERT INTO tests VALUES (?, ?, ?, ?, ?)", TestIndexParserCSV::next_id(), $test->{'name'}, $test->{'config'}, $currfile, $test->{'line'});
+                    TestIndexCSV::query_index("INSERT INTO tests VALUES (?, ?, ?, ?, ?)", TestIndexCSV::next_id(), $test->{'name'}, $test->{'config'}, $currfile, $test->{'line'});
                     $added_count ++;
                 }
             }
@@ -214,10 +214,10 @@ sub TestIndexParserCSV::update_index($) {
         }
     };
 
-    TestIndexParser::recursive_scan($testsdir, $callback);
+    TestIndex::recursive_scan($testsdir, $callback);
     
     # Index is updated!
-    TestIndexParserCSV::close_index();
+    TestIndexCSV::close_index();
     verify::log_status("Done!\n");
 
     return ($added_count, $removed_count);
@@ -231,12 +231,12 @@ sub TestIndexParserCSV::update_index($) {
 # Returns:
 #   - If found, a list containing: filename of the test file, line number within file
 ###
-sub TestIndexParserCSV::find_test($$) {
+sub TestIndexCSV::find_test($$) {
     my ($config, $testname) = @_;
     my $testfile_str = "";
     verify::log_status("Searching index for test...\n");
-    TestIndexParserCSV::open_index();
-    my @results = TestIndexParserCSV::query_index("SELECT file, line_number FROM tests WHERE NAME=? AND CONFIG=?", $testname, $config);
+    TestIndexCSV::open_index();
+    my @results = TestIndexCSV::query_index("SELECT file, line_number FROM tests WHERE NAME=? AND CONFIG=?", $testname, $config);
     if (@results > 0) { # We found it!
         verify::log_status("Found it!\n");
         return @results;
@@ -254,7 +254,7 @@ sub TestIndexParserCSV::find_test($$) {
 # Returns:
 #   - Relative path and filename (under $testsdir) to the test file.
 ###
-sub TestIndexParserCSV::get_test_file($$) {
+sub TestIndexCSV::get_test_file($$) {
     my ($config, $testname) = @_;
     my $testfile_str = "";
     my $line_number = 0;
@@ -268,13 +268,13 @@ sub TestIndexParserCSV::get_test_file($$) {
         my $indexed_count = 0;
         mkdir "$ENV{PRJ_HOME}/.verify" unless (-d "$ENV{PRJ_HOME}/.verify");
         
-        TestIndexParserCSV::create_index();
+        TestIndexCSV::create_index();
         my $callback = sub {
             # Parameters: filename
-            my @curr_tests = TestIndexParser::quick_parse_file($testsdir.'/'.$_[0]);
+            my @curr_tests = TestIndex::quick_parse_file($testsdir.'/'.$_[0]);
             if (@curr_tests) {
                 foreach my $curr_test (@curr_tests) {
-                    TestIndexParserCSV::query_index("INSERT INTO tests VALUES (?, ?, ?, ?, ?)", $indexed_count, $curr_test->{'name'}, $curr_test->{'config'}, $_[0], $curr_test->{'line'});
+                    TestIndexCSV::query_index("INSERT INTO tests VALUES (?, ?, ?, ?, ?)", $indexed_count, $curr_test->{'name'}, $curr_test->{'config'}, $_[0], $curr_test->{'line'});
                     $indexed_count ++;
                 }
             }
@@ -283,15 +283,15 @@ sub TestIndexParserCSV::get_test_file($$) {
             }
         };
         
-        TestIndexParser::recursive_scan($testsdir, $callback);
+        TestIndex::recursive_scan($testsdir, $callback);
         verify::log_status("Indexed $indexed_count tests.\n");
-        TestIndexParserCSV::close_index();
+        TestIndexCSV::close_index();
 
         $index_up2date = 1;
     }
 
     # Now, open index and look for test
-    ($testfile_str, $line_number) = TestIndexParserCSV::find_test($config, $testname);
+    ($testfile_str, $line_number) = TestIndexCSV::find_test($config, $testname);
 
     # Check if we found the file. If not, update the index (if not up to date).
     if ($testfile_str eq "" || !-e $testsdir.'/'.$testfile_str) { # It will remain unset if we didn't find it. Also trigger if it's indexed but the test file doesn't exist.
@@ -301,13 +301,13 @@ sub TestIndexParserCSV::get_test_file($$) {
         else {
             # Index may not be up to date, so update the index now and then search again!
             verify::log_status("Test not found in index. Maybe the index isn't up to date?\n");
-            my ($added_count, $removed_count) = TestIndexParserCSV::update_index($testsdir);
+            my ($added_count, $removed_count) = TestIndexCSV::update_index($testsdir);
             $index_up2date = 1;
             verify::log_status("Updated index: added $added_count, removed $removed_count\n");
         }
 
         # Now that the index is updated, search for the test again...
-        ($testfile_str, $line_number) = TestIndexParserCSV::find_test($config, $testname);
+        ($testfile_str, $line_number) = TestIndexCSV::find_test($config, $testname);
 
         if ($testfile_str eq "") { # Still can't find it? Then it must not exist.
             verify::tdie("The test ".$config."::".$testname." could not be found!\n");
@@ -316,17 +316,17 @@ sub TestIndexParserCSV::get_test_file($$) {
     else {
         # We found the test in the index, but now we need to make sure it actually exists where it says it does.
         verify::log_status("Checking test file for test...\n");
-        my $found = TestIndexParser::test_exists($testfile_str, $testname, $config, $line_number);
+        my $found = TestIndex::test_exists($testfile_str, $testname, $config, $line_number);
 
         # Couldn't find the test where the index specified! Reindex and look again.
         if ($found == 0) {
             verify::log_status("Not found!\n");
             if ($index_up2date == 0) {
-                my ($added_count, $removed_count) = TestIndexParserCSV::update_index($testsdir);
+                my ($added_count, $removed_count) = TestIndexCSV::update_index($testsdir);
                 $index_up2date = 1;
                 verify::log_status("Updated index: added $added_count, removed $removed_count\n");
 
-                ($testfile_str, $line_number) = TestIndexParserCSV::find_test($config, $testname);
+                ($testfile_str, $line_number) = TestIndexCSV::find_test($config, $testname);
                 if ($testfile_str eq "") { # Still not found? It doesn't exist.
                     verify::tdie("The test ".$config."::".$testname." could not be found!\n");
                 }
@@ -350,17 +350,17 @@ sub TestIndexParserCSV::get_test_file($$) {
 # Returns:
 #   - A reference to the test information stored in a relational array in memory
 ###
-sub TestIndexParserCSV::parse_test_file( $$$;$ ) {
+sub TestIndexCSV::parse_test_file( $$$;$ ) {
     my ($filename, $config, $name, $params) = @_;
-    return TestIndexParser::parse_test_file($filename, $config, $name, $params);
+    return TestIndex::parse_test_file($filename, $config, $name, $params);
 }
 
 ### list_tests() ###
 # Does a recursive search under the tests root directory and displays each tests' config, name, and description in a list.
 # Note: This function does not use the index file.
 ###
-sub TestIndexParserCSV::list_tests() {
-    TestIndexParser::list_tests();
+sub TestIndexCSV::list_tests() {
+    TestIndex::list_tests();
 }
 
 1;

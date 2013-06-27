@@ -29,8 +29,8 @@ BEGIN {
     # I would do this at run-time, allowing you to specify the module in verify.ini, but Perl doesn't allow package
     #  aliasing at run-time, making it impossible (or at least incredibly difficult) to do what I want to do. I'll
     #  settle with this for now.
-    require TestIndexParser;
-    *Parser:: = *TestIndexParser::;
+    require TestIndex;
+    *Index:: = *TestIndex::;
 }
 
 
@@ -133,7 +133,7 @@ sub init() {
 
     my $now = localtime(); # Get timestamp
 
-    Parser::set_testsdir($verify::testsdir);
+    Index::set_testsdir($verify::testsdir);
     $sf_semaphore = Thread::Semaphore->new();
 
     $sf_semaphore->down();
@@ -258,7 +258,7 @@ sub parse_tool_args() {
                              'report|r'      => \$options{'report'},
                              'log|l=s'       => \$verify::logfile,
                              'email|e=s'     => sub { $options{'email'} = 1; $email_list = $_[1] },
-                             'print|p'       => sub { Parser::list_tests(); finish(0); },
+                             'print|p'       => sub { Index::list_tests(); finish(0); },
                              'parallel|P=i'  => sub {
                                                    my $n = $_[1];
                                                    if ($n < 1) {
@@ -313,9 +313,9 @@ sub parse_tool_args() {
         my $testname = shift @testparams;
         
         # Get test file
-        my $file = Parser::get_test_file($config, $testname);
+        my $file = Index::get_test_file($config, $testname);
         # Parse test file
-        my $currtest = Parser::parse_test_file($file, $config, $testname, \@testparams);
+        my $currtest = Index::parse_test_file($file, $config, $testname, \@testparams);
     
         # Store test (as many times as indicated by $repeat)
     for (my $n = 0; $n < $repeat; $n++) {
@@ -875,11 +875,11 @@ Displays version information for Verify on the console.
 
 =head3 Required files
 
-This script was designed with portability in mind, so there are only a few files needed for basic script operation. The initial configuration step when installing this script is also very minimal. The whole of this script consists of at least three files: the main source and two user-implemented source files.
+This script was designed with portability in mind, so there are only a few files needed for basic script operation. The initial configuration step when installing this script is also very minimal. The whole of this script consists of at least three groups of files: the main source, indexing and parsing modules, and user-implemented modules for the build and run steps.
 
-The main source is in F<verify.pl>. It contains all the code necessary for organizing and invoking tests. It will invoke the test file parser implemented in F<TestIndexParser.pm> and the build and run steps from methods implemented in F<build_test.pm> and F<run_test.pm>, respectively. These two files may exist anywhere, so long as they are both in the same directory and that you configure F<verify.pl> to know where these files are. I will touch on configuration in the next subsection.
+The main source is in F<verify.pl>. It contains all the code necessary for organizing and invoking tests. It will query the test file indexer (by default, F<TestIndex.pm>) and invoke the build and run steps from methods implemented in F<build_test.pm> and F<run_test.pm>, respectively. These two files may exist anywhere, so long as they are both in the same directory and that you configure F<verify.pl> to know where these files are. I will touch on configuration in the next subsection.
 
-F<TestIndexParser.pm> contains the code necessary for resolving C<config::testname> pairs into its testfile, and then, parsing that testfile into a test definition hash variable. It also contains the code necessary for outputting the entire test list (if the tool is invoked with C<-p>). The included module will use a C<config::testname> pair to locate the corresponding test definition, and return back a hash containing test information.
+F<TestIndex.pm> contains the code necessary for resolving C<config::testname> pairs into its testfile. It utilizes test file parsing functions from F<TestFileParser.pm> to store the test definition into a hash variable. It also contains the code necessary for outputting the entire test list (if the tool is invoked with C<-p>).
 
 F<build_test.pm> contains the code necessary for your build step. It implements three functions: C<pre_build()>, C<build()>, and C<post_build()>. The implementation of these functions is not provided, because they are to be written by the user. F<run_test.pm> is similar, but is associated with the run step. It implements three similar functions: C<pre_run()>, C<run()>, and C<post_run()>.
 
