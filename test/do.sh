@@ -14,6 +14,7 @@ function clean {
 }
 
 function _run_test_expect_fail {
+    echo "do.sh> verify $1  (expect fail)"
     verify $1
     if [[ $? == 0 ]]; then
         echo "do.sh> Failed!" > /dev/stderr
@@ -26,6 +27,7 @@ function _run_test_expect_fail {
 }
 
 function _run_test_expect_pass {
+    echo "do.sh> verify $1  (expect pass)"
     verify $1
     if [[ $? > 0 ]]; then
         echo "do.sh> Failed!" > /dev/stderr

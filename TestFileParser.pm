@@ -15,10 +15,11 @@ my @instr_fields = qw/keyword modifier scope data data_action/;
 # ---------------------------------------------------------------------
 #  test          N/A         N/A        string    N/A      N/A          = Scoping instructions...
 #  endtest       N/A         integer    N/A       N/A      N/A          
-#  name          N/A         integer    string    N/A      N/A          = Declarative instructions...
-#  config        N/A         integer    string    N/A      N/A           
+#  config        N/A         integer    string    N/A      N/A          = Declarative instructions... 
 #  description   N/A         integer    string    N/A      N/A           
-#  params        N/A         integer    string    N/A      =, +=         
+#  params        N/A         integer    string    N/A      =, +=        
+#  build.args    N/A         integer    string    N/A      =, +=
+#  run.args      N/A         integer    string    N/A      =, +=
 #  define        build       integer    string    string   =, +=         
 #  define        run         integer    string    string   =, +=         
 #  define        (none)      integer    string    string   =, +=         
@@ -46,8 +47,6 @@ $TestFileParser::filename = "";
 my @file_arr;
 my $file_index = 0;
 my $current_scope = -1;
-
-my $scoping_mode = -1;  # 0 for multiple tests per file, 1 for single test per file
 
 my $next_scope_number = 0;
 
@@ -83,15 +82,6 @@ sub TestFileParser::open( $ ) {
     tie @file_arr, 'Tie::File', $TestFileParser::filename, mode => Fcntl::O_RDONLY;
     if (@file_arr) {
         $file_index = 0;
-        
-        # TODO: need to figure out how to detect scoping mode. Hard-code to 0 for now.
-        $scoping_mode = 0;
-
-        if ($scoping_mode == 1) {  # Define new scope on file open if scoping mode is single test per file
-            $current_scope = $next_scope_number;
-            $next_scope_number ++;
-        }
-
         return !0;
     }
     else {
@@ -105,6 +95,9 @@ sub TestFileParser::open( $ ) {
 sub TestFileParser::close() {
     if (@file_arr) {
         untie @file_arr;
+        $file_index = 0;
+        $current_scope = -1;
+        $next_scope_number = 0;
     }
 }
 
@@ -148,9 +141,9 @@ sub TestFileParser::get_next_instruction() {
         $current_scope = $next_scope_number;
         $scope = $current_scope;
 
-        undef $modifier;
-        undef $data2;
-        undef $data_action;
+        $modifier = '';
+        $data2 = '';
+        $data_action = '';
     }
     elsif ($curr_line =~ m/^endtest$/) {
         if ($current_scope == -1) {
@@ -163,27 +156,10 @@ sub TestFileParser::get_next_instruction() {
         $current_scope = -1;
         $next_scope_number ++;
 
-        undef $modifier;
-        undef $data;
-        undef $data2;
-        undef $data_action;
-    }
-    elsif ($curr_line =~ m/^name=(\w+)$/) {  # 'name' keyword (for scoping mode 1)
-        if ($scoping_mode != 1) {
-            plog(1, "Error: Keyword 'name' not allowed for scoping mode 0!\n [".$TestFileParser::filename." @ ".$file_index."]  ".$curr_line."\n");
-            return ();
-        }
-        if ($current_scope == -1) {
-            plog(1, "Error: No scope was set!\n [".$TestFileParser::filename." @ ".$file_index."]  ".$curr_line."\n");
-            return ();
-        }
-
-        $keyword = "name";
-        $scope = $current_scope;
-        $data = $1;
-        undef $data_action;
-        undef $data2;
-        undef $modifier;
+        $modifier = '';
+        $data = '';
+        $data2 = '';
+        $data_action = '';
     }
     elsif ($curr_line =~ m/^define\s+(\w+\s+)?\w+(\+=|=).*$/) { # 'define' keyword
         if ($current_scope == -1) {
@@ -197,7 +173,7 @@ sub TestFileParser::get_next_instruction() {
             $data = $1;
             $data_action = $2;
             $data2 = $3;
-            undef $modifier;
+            $modifier = '';
         }
         elsif ($curr_line =~ m/^define\s+build\s+(\w+)(\+=|=)(.+)$/) {  # 'build' modifier
             $keyword = "define";
@@ -221,6 +197,22 @@ sub TestFileParser::get_next_instruction() {
             return ();
         }
     }
+    elsif ($curr_line =~ m/^build\.args(=|\+=)(.*)$/) {
+        $keyword = "build.args";
+        $scope = $current_scope;
+        $data_action = $1;
+        $data = $2;
+        $modifier = '';
+        $data2 = '';
+    }
+    elsif ($curr_line =~ m/^run\.args(=|\+=)(.*)$/) {
+        $keyword = "run.args";
+        $scope = $current_scope;
+        $data_action = $1;
+        $data = $2;
+        $modifier = '';
+        $data2 = '';
+    }
     elsif ($curr_line =~ m/^description=(.*)$/) {
         if ($current_scope == -1) {
             plog(1, "Error: Keyword 'description' only allowed within a test's scope!\n [".$TestFileParser::filename." @ ".$file_index."]  ".$curr_line."\n");
@@ -230,9 +222,9 @@ sub TestFileParser::get_next_instruction() {
         $keyword = "description";
         $scope = $current_scope;
         $data = $1;
-        undef $modifier;
-        undef $data2;
-        undef $data_action;
+        $modifier = '';
+        $data2 = '';
+        $data_action = '';
     }
     elsif ($curr_line =~ m/^config=(.*)$/) {
         if ($current_scope == -1) {
@@ -243,9 +235,9 @@ sub TestFileParser::get_next_instruction() {
         $keyword = "config";
         $scope = $current_scope;
         $data = $1;
-        undef $modifier;
-        undef $data2;
-        undef $data_action;
+        $modifier = '';
+        $data2 = '';
+        $data_action = '';
     }
     elsif ($curr_line =~ m/^params(\+=|=)(.*)$/) {
         if ($current_scope == -1) {
@@ -257,8 +249,8 @@ sub TestFileParser::get_next_instruction() {
         $scope = $current_scope;
         $data_action = $1;
         $data = $2;
-        undef $modifier;
-        undef $data2;
+        $modifier = '';
+        $data2 = '';
     }
     else {
         plog(1, "Error: Bad syntax!\n [".$TestFileParser::filename." @ ".$file_index."]  ".$curr_line."\n");

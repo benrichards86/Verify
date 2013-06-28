@@ -22,4 +22,7 @@ endtest
 test: example4
       description=Example test \#4.
       config=c2
+      build.args=-Dba1
+      build.args+=-Dba2
+      run.args=-Dra1
 endtest

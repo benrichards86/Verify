@@ -359,6 +359,20 @@ sub TestIndex::quick_parse_file($) {
     return @test_list;
 }
 
+sub init_test() {
+    my $test = {"name" => "",          # Required: Identifies the test
+             "description" => "",   # Required: Describes the test
+             "config" => "",        # Required: Testbench config associated with the test
+             "build.args" => "",    # These are custom parameters passed directly to the build tool
+             "run.args" => "",      # These are custom parameters passed directly to the run tool
+             "params" => "",        # This is the list of test parameters passed in the file and/or on the command-line as comma-separated values
+             "define" => {},        # Used to define custom parameters for both build and run steps
+             "build.define" => {},  # Same as above, but only build step
+             "run.define" => {}};   # Same as above, but only run step
+
+    return $test;
+}
+
 ### parse_test_file() ###
 # Parses test arguments specified in *.test files.
 # Parameters:
@@ -370,15 +384,7 @@ sub TestIndex::quick_parse_file($) {
 #   - A reference to the test information stored in a relational array in memory
 ###
 sub TestIndex::parse_test_file($$$;$) {
-    my $test = {"name" => "",          # Required: Identifies the test
-                "description" => "",   # Required: Describes the test
-                "config" => "",        # Required: Testbench config associated with the test
-                "build.args" => "",    # These are custom parameters passed directly to the build tool
-                "run.args" => "",      # These are custom parameters passed directly to the run tool
-                "params" => "",        # This is the list of test parameters passed in the file and/or on the command-line as comma-separated values
-                "define" => {},        # Used to define custom parameters for both build and run steps
-                "build.define" => {},  # Same as above, but only build step
-                "run.define" => {}};   # Same as above, but only run step
+    my $test = init_test();
 
     my $required_flags = 0;
 
@@ -386,88 +392,122 @@ sub TestIndex::parse_test_file($$$;$) {
     my $config = $_[1];
     my $name = $_[2];
     my @testparams = @{$_[3]} if (@_ > 3);
+    
+    my $msg = "";
 
-    open(TEST, "<", $testfile) or verify::tdie("Unable to open test file when parsing test!\n$!\n File: $testfile\n");
-    verify::log_status("Parsing test file: ".$testfile."\n");
+    verify::log_status("Parsing test file [".$testfile."] for test: ".$config."::".$name."\n");
+    TestFileParser::open($testfile) or verify::tdie("Unable to open test file!\n$!\n File: $testfile\n");
+    
+    my $scope = -1;
+    my @curr = ();
 
-    my $curr;
-    while ($curr = <TEST>) {
-        chomp $curr;
-        $curr = TestIndex::prune_comments($curr);
-        
-        if ($curr !~ m/^\s*$/) {
-            if ($curr =~ m/^\s*test:\s*($name)\s*$/) {
-                $test->{"name"} = $1;
+    do {
+        @curr = TestFileParser::get_next_instruction();
+
+        if (@curr == 0) {
+            # TODO: error
+        }
+
+        if ($scope == -1) {
+            if ($curr[0] eq 'test' && $curr[3] eq $name) {
+                $test->{'name'} = $curr[3];
+                $scope = $curr[2];
                 $required_flags |= 1;
-                do {
-                    $curr = <TEST>;
-                    chomp $curr;
-                    $curr = TestIndex::prune_comments($curr);
-
-                    if ($curr !~ m/^\s*$/) {
-                        my ($key, $value) = ('', '');
-
-                        if ($curr =~ m/^\s*define\s+(\w+\s+)?\w+=.*\s*$/) {   # Handle parsing for 'define' custom parameters...
-                            if ($curr =~ m/^\s*define\s+(\w+)=(.+)\s*$/) {
-                                $test->{"define"}->{$1} = $2;
-                            }
-                            elsif ($curr =~ m/^\s*define\s+build\s+(\w+)=(.+)\s*$/) {
-                                $test->{"build.define"}->{$1} = $2;
-                            }
-                            elsif ($curr =~ m/^\s*define\s+run\s+(\w+)=(.+)\s*$/) {
-                                $test->{"run.define"}->{$1} = $2;
-                            }
-                            else {
-                                $curr =~ m/^\s*define\s+(\w+)\s+\w+=.*\s*$/;
-                                verify::tdie("Unexpected argument to define in test definition file! Line: ".TEST->input_line_number()."\n File: ".$testfile."\n Argument: ".$1."\n");
-                            }
-                        }
-                        elsif ($curr =~ m/\+=/) {      # Handle parsing for other test data (append)
-                            ($key, $value) = split(/\+=/, $curr);
-                            $key =~ s/\s//g;
-                            if (exists $test->{lc($key)} && $key ne "name") {
-                                $test->{lc($key)} = $test->{$key}.' '.$value;
-                                if ($key eq "name") {
-                                    $required_flags |= 0x1;
-                                } elsif ($key eq "description") {
-                                    $required_flags |= 0x2;
-                                } elsif ($key eq "config") {
-                                    $required_flags |= 0x4;
-                                }
-                            }
-                            else {
-                                verify::tdie("Malformed key in test definition file! Line: ".TEST->input_line_number()."\n File: ".$testfile."\n Key: ".lc($key)."\n");
-                            }
-                        }
-                        elsif ($curr =~ m/=/) {    # Handle parsing for other test data (assign)
-                            ($key, $value) = ($`, $'); #'); # Doing this to prevent emacs from misinterpreting the $' variable, and screwing up font lock mode and tabbing.
-                            $key =~ s/\s//g;
-                            if (exists $test->{lc($key)} && $key ne "name") {
-                                $test->{lc($key)} = $value;
-                                if ($key eq "name") {
-                                    $required_flags |= 0x1;
-                                } elsif ($key eq "description") {
-                                    $required_flags |= 0x2;
-                                } elsif ($key eq "config") {
-                                    $required_flags |= 0x4;
-                                }
-                            }
-                            else {
-                                verify::tdie("Malformed key in test definition file! Line: ".TEST->input_line_number()."\n File: ".$testfile."\n Key: ".lc($key)."\n");
-                            }
-                        }
-                        elsif ($curr !~ m/^\s*endtest\s*$/) {
-                            verify::tdie("Malformed text in test definition file! Line: ".TEST->input_line_number()."\n File: ".$testfile."\n".$curr."\n");
-                        }
-                    }
-                } while ($curr !~ m/^\s*endtest\s*$/);
             }
         }
-    }
-    
+        else {
+            if ($curr[0] eq 'config') {
+                if ($curr[3] ne $config) {  # Not config we want, so this must not be the test we care about. Back to the start.
+                    $scope = -1;
+                    $test = init_test();
+                    $required_flags = 0;
+                }
+                else {
+                    $test->{'config'} = $curr[3];
+                    $required_flags |= 0x4;
+                }
+            }
+            elsif ($curr[0] eq 'description') {
+                $test->{'description'} = $curr[3];
+                $required_flags |= 0x2;            
+            }
+            elsif ($curr[0] eq 'params') {
+                if ($curr[5] eq '=') {
+                    $test->{'params'} = $curr[3];
+                }
+                elsif ($curr[5] eq '+=') {
+                    $test->{'params'} = $test->{'params'}.$curr[3];
+                }
+                else {
+                    # TODO: error
+                }
+            }
+            elsif ($curr[0] eq 'build.args') {
+                if ($curr[5] eq '=') {
+                    $test->{'build.args'} = $curr[3];
+                }
+                elsif ($curr[5] eq '+=') {
+                    $test->{'build.args'} = $test->{'build.args'}.' '.$curr[3];
+                }
+                else {
+                    # TODO: error
+                }
+            }
+            elsif ($curr[0] eq 'run.args') {
+                if ($curr[5] eq '=') {
+                    $test->{'run.args'} = $curr[3];
+                }
+                elsif ($curr[5] eq '+=') {
+                    $test->{'run.args'} = $test->{'run.args'}.' '.$curr[3];
+                }
+                else {
+                    # TODO: error
+                }
+            }
+            elsif ($curr[0] eq 'define') {
+                if (!defined $curr[1]) {
+                    if ($curr[5] eq '=') {
+                        $test->{'define'}->{$curr[3]} = $curr[4];
+                    }
+                    elsif ($curr[5] eq '+=') {
+                        $test->{'define'}->{$curr[3]} = $test->{'define'}->{$curr[3]}.' '.$curr[4];
+                    }
+                    else {
+                        # TODO: error
+                    }
+                }
+                elsif ($curr[1] eq 'build') {
+                    if ($curr[5] eq '=') {
+                        $test->{'build.define'}->{$curr[3]} = $curr[4];
+                    }
+                    elsif ($curr[5] eq '+=') {
+                        $test->{'build.define'}->{$curr[3]} = $test->{'build.define'}->{$curr[3]}.' '.$curr[4];
+                    }
+                    else {
+                        # TODO: error
+                    }
+                }
+                elsif ($curr[1] eq 'run') {
+                    if ($curr[5] eq '=') {
+                        $test->{'run.define'}->{$curr[3]} = $curr[4];
+                    }
+                    elsif ($curr[5] eq '+=') {
+                        $test->{'run.define'}->{$curr[3]} = $test->{'run.define'}->{$curr[3]}.' '.$curr[4];
+                    }
+                    else {
+                        # TODO: error
+                    }
+                }
+            }
+        }
+    } until ($scope != -1 && $curr[0] eq 'endtest');
+
+  L1_FIN:
+    TestFileParser::close();
+
     # Check for required fields
     if ($required_flags != 0x7) {
-        my $msg = "";
+        $msg = "";
         $msg = "$msg Required field 'name' was not found.\n" if !($required_flags & 0x1);
         $msg = "$msg Required field 'description' was not found.\n" if !($required_flags & 0x2);
         $msg = "$msg Required field 'config' was not found.\n" if !($required_flags & 0x4);
