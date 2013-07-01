@@ -271,14 +271,13 @@ sub TestFileParser::get_next_instruction() {
 ###
 sub prune( $ ) {
     my $curr = $_[0];
-    if ($curr ne "") {
-        if ($curr =~ m/(?<=\\)#.*/) {
-            $curr =~ s/\\(#.*)/$1/g;  # Not a comment, just remove backslash escaping
-        } else {
-            $curr =~ s/(?<!\\)#.*//g; # remove comments from test file
-        }
-    }
+    # Remove comments
+    $curr =~ s/(?<!\\)#.*//g;
 
+    # Removed backslash escaping for non-comment # characters
+    $curr =~ s/\\(#.*)/$1/g;
+
+    # Remove trailing and prefixed whitespace
     $curr =~ s/^\s*//g;
     $curr =~ s/\s*$//g;
 
