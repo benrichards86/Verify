@@ -12,14 +12,13 @@ package verify::TestIndex;
 # Function prototypes
 sub TestIndex::set_testsdir( $ );
 sub TestIndex::recursive_scan( $$ );
-sub TestIndex::update_index( $ );
-sub TestIndex::prune_comments( $ );
 sub TestIndex::find_test( $$ );
 sub TestIndex::test_exists( $$$;$ );
 sub TestIndex::get_test_file( $$ );
 sub TestIndex::quick_parse_file( $ );
 sub TestIndex::get_test( $$$;$ );
 sub TestIndex::list_tests();
+sub update_index( $ );
 
 # Root directory where test files will live under
 my $testsdir = "";
@@ -59,7 +58,7 @@ sub TestIndex::recursive_scan($$) {
 #   - Number of tests added
 #   - Number of tests removed
 ###
-sub TestIndex::update_index($) {
+sub update_index($) {
     my ($added_count, $removed_count) = (0, 0);
     my ($root_dir) = @_;
 
@@ -249,7 +248,7 @@ sub TestIndex::get_test_file($$) {
         else {
             # Index may not be up to date, so update the index now and then search again!
             verify::log_status("Test not found in index. Maybe the index isn't up to date?\n");
-            my ($added_count, $removed_count) = TestIndex::update_index($testsdir);
+            my ($added_count, $removed_count) = update_index($testsdir);
             $index_up2date = 1;
             verify::log_status("Updated index: added $added_count, removed $removed_count\n");
         }
@@ -269,7 +268,7 @@ sub TestIndex::get_test_file($$) {
         if ($found == 0) {
             verify::log_status("Not found!\n");
             if ($index_up2date == 0) {
-                my ($added_count, $removed_count) = TestIndex::update_index($testsdir);
+                my ($added_count, $removed_count) = update_index($testsdir);
                 $index_up2date = 1;
                 verify::log_status("Updated index: added $added_count, removed $removed_count\n");
 
@@ -285,25 +284,6 @@ sub TestIndex::get_test_file($$) {
     }
 
     return $testfile_str;
-}
-
-### prune_comments() ###
-# Prunes comments from a string.
-# Parameters:
-#   - A string to prune
-# Returns:
-#   - The pruned string
-###
-sub TestIndex::prune_comments($) {
-    my $curr = $_[0];
-    if ($curr ne "") {
-        if ($curr =~ m/(?<=\\)#.*/) {
-            $curr =~ s/\\(#.*)/$1/g;  # Not a comment, just remove backslash escaping
-        } else {
-            $curr =~ s/(?<!\\)#.*//g;   # remove comments from test file
-        }
-    }
-    return $curr;
 }
 
 ### quick_parse_file() ###

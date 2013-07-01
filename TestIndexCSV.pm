@@ -10,13 +10,11 @@ package verify::TestIndexCSV;
 
 # Function prototypes
 sub TestIndexCSV::set_testsdir( $ );
-sub TestIndexCSV::recursive_scan( $$ );
-sub TestIndexCSV::update_index( $ );
-sub TestIndexCSV::prune_comments( $ );
 sub TestIndexCSV::find_test( $$ );
 sub TestIndexCSV::get_test_file( $$ );
 sub TestIndexCSV::get_test( $$$;$ );
 sub TestIndexCSV::list_tests();
+sub update_index( $ );
 
 # Index API
 sub TestIndexCSV::open_index();
@@ -151,7 +149,7 @@ sub TestIndexCSV::set_testsdir( $ ) {
 #   - Number of tests added
 #   - Number of tests removed
 ###
-sub TestIndexCSV::update_index($) {
+sub update_index($) {
     my ($added_count, $removed_count) = (0, 0);
     my ($root_dir) = @_;
 
@@ -301,7 +299,7 @@ sub TestIndexCSV::get_test_file($$) {
         else {
             # Index may not be up to date, so update the index now and then search again!
             verify::log_status("Test not found in index. Maybe the index isn't up to date?\n");
-            my ($added_count, $removed_count) = TestIndexCSV::update_index($testsdir);
+            my ($added_count, $removed_count) = update_index($testsdir);
             $index_up2date = 1;
             verify::log_status("Updated index: added $added_count, removed $removed_count\n");
         }
@@ -322,7 +320,7 @@ sub TestIndexCSV::get_test_file($$) {
         if ($found == 0) {
             verify::log_status("Not found!\n");
             if ($index_up2date == 0) {
-                my ($added_count, $removed_count) = TestIndexCSV::update_index($testsdir);
+                my ($added_count, $removed_count) = update_index($testsdir);
                 $index_up2date = 1;
                 verify::log_status("Updated index: added $added_count, removed $removed_count\n");
 
