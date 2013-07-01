@@ -93,7 +93,7 @@ sub update_index($) {
         }
         else {
             # Something went horribly wrong. The file should have been already verified to exist.
-            verify::tdie("Unable to open test file when adding unindexed tests!\n$!\n File: $testsdir/$currfile\n");
+            verify::tdie("Unable to open test file when indexing tests!\n$!\n File: $testsdir/$currfile\n");
         }
     }
 
