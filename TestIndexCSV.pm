@@ -17,8 +17,8 @@ sub TestIndexCSV::list_tests();
 sub update_index( $ );
 
 # Index API
-sub TestIndexCSV::open_index();
-sub TestIndexCSV::close_index();
+sub TestIndexCSV::open_index( ;$ );
+sub TestIndexCSV::close_index( ;$ );
 sub TestIndexCSV::create_index();
 sub TestIndexCSV::query_index( $;@ );
 sub TestIndexCSV::query_index_all( $;@ );
@@ -44,7 +44,7 @@ sub TestIndexCSV::next_id() {
 #   - Handle to index
 ###
 sub TestIndexCSV::create_index() {
-    $dbh = TestIndexCSV::open_index();
+    $dbh = TestIndexCSV::open_index(0);
     my $success = TestIndexCSV::query_index_fast("CREATE TABLE tests ( id INT, name TEXT, config TEXT, file TEXT, line_number INT )");
 
     if ($success > 0) {
@@ -56,11 +56,13 @@ sub TestIndexCSV::create_index() {
 
 ### open_index() ###
 # Opens the index for querying
+# Parameters:
+#   - 0 to disable message logging. (optional; enabled is default)
 # Returns:
 #   - Handle to index
 ###
-sub TestIndexCSV::open_index() {
-    verify::log_status("Opening index...\n");
+sub TestIndexCSV::open_index( ;$ ) {
+    verify::log_status("Opening index.\n") unless (defined $_[0] && $_[0] == 0);
     my @columns = qw(config name file line_number);
     $dbh = DBI->connect("dbi:CSV:f_dir=$ENV{PRJ_HOME}/.verify");
     $dbh->{RaiseError} = 1;
@@ -70,10 +72,10 @@ sub TestIndexCSV::open_index() {
 ### close_index() ###
 # Closes a previously opened index handle.
 # Parameters:
-#   - Handle to index (optional)
+#   - 0 to enable message logging. (optional; enabled is default)
 ###
-sub TestIndexCSV::close_index() {
-    verify::log_status("Closing index.\n");
+sub TestIndexCSV::close_index( ;$ ) {
+    verify::log_status("Closing index.\n") unless (defined $_[0] && $_[0] == 0);
     $dbh->disconnect;
 }
 
@@ -156,7 +158,6 @@ sub update_index($) {
     verify::log_status("Updating index...\n");
 
     # Do a check for exist and remove those that don't exist anymore, storing those that do...
-    TestIndexCSV::open_index();
     my $currfiles_arr = TestIndexCSV::query_index_all("SELECT DISTINCT file FROM tests");
     foreach my $c (@{$currfiles_arr}) {
         my @c_arr = @{$c};
@@ -215,7 +216,6 @@ sub update_index($) {
     TestIndex::recursive_scan($testsdir, $callback);
     
     # Index is updated!
-    TestIndexCSV::close_index();
     verify::log_status("Done!\n");
 
     return ($added_count, $removed_count);
@@ -232,11 +232,10 @@ sub update_index($) {
 sub TestIndexCSV::find_test($$) {
     my ($config, $testname) = @_;
     my $testfile_str = "";
-    verify::log_status("Searching index for test...\n");
-    TestIndexCSV::open_index();
+    verify::log_status("Looking up test file in index... ");
     my @results = TestIndexCSV::query_index("SELECT file, line_number FROM tests WHERE NAME=? AND CONFIG=?", $testname, $config);
     if (@results > 0) { # We found it!
-        verify::log_status("Found it!\n");
+        verify::log_status("Found. [$results[0]:$results[1]]\n");
         return @results;
     }
     else {
@@ -261,7 +260,7 @@ sub TestIndexCSV::get_test_file($$) {
     # First, check if index exists
     if (!-e $ENV{'PRJ_HOME'}.'/.verify/tests') {
         # Index doesn't exist: build it!
-        verify::log_status("Index not found! Doing initial build...\n");
+        verify::log_status("Index not found! I'll build the index right now.\n");
         
         my $indexed_count = 0;
         mkdir "$ENV{PRJ_HOME}/.verify" unless (-d "$ENV{PRJ_HOME}/.verify");
@@ -282,13 +281,15 @@ sub TestIndexCSV::get_test_file($$) {
         };
         
         TestIndex::recursive_scan($testsdir, $callback);
+        TestIndexCSV::close_index(0);
         verify::log_status("Indexed $indexed_count tests.\n");
-        TestIndexCSV::close_index();
 
         $index_up2date = 1;
     }
 
+
     # Now, open index and look for test
+    TestIndexCSV::open_index();
     ($testfile_str, $line_number) = TestIndexCSV::find_test($config, $testname);
 
     # Check if we found the file. If not, update the index (if not up to date).
@@ -313,7 +314,7 @@ sub TestIndexCSV::get_test_file($$) {
     }
     else {
         # We found the test in the index, but now we need to make sure it actually exists where it says it does.
-        verify::log_status("Checking test file for test...\n");
+        verify::log_status("Checking indexed file location for test...\n");
         my $found = TestIndex::test_exists($testfile_str, $testname, $config, $line_number);
 
         # Couldn't find the test where the index specified! Reindex and look again.
@@ -331,14 +332,16 @@ sub TestIndexCSV::get_test_file($$) {
             }
         }
         else {
-            verify::log_status("Found it!\n");
+            verify::log_status("Test exists.\n");
         }
     }
+
+    TestIndexCSV::close_index();
 
     return $testfile_str;
 }
 
-### parse_test_file() ###
+### get_test() ###
 # Parses test arguments specified in *.test files.
 # Parameters:
 #   - Filename (with relative path) of the test file to parse.
@@ -348,9 +351,9 @@ sub TestIndexCSV::get_test_file($$) {
 # Returns:
 #   - A reference to the test information stored in a relational array in memory
 ###
-sub TestIndexCSV::parse_test_file( $$$;$ ) {
+sub TestIndexCSV::get_test( $$$;$ ) {
     my ($filename, $config, $name, $params) = @_;
-    return TestIndex::parse_test_file($filename, $config, $name, $params);
+    return TestIndex::get_test($filename, $config, $name, $params);
 }
 
 ### list_tests() ###

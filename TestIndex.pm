@@ -142,12 +142,12 @@ sub update_index($) {
 sub TestIndex::find_test($$) {
     my ($config, $testname) = @_;
     my $testfile_str = "";
-    verify::log_status("Searching index for test... ");
+    verify::log_status("Looking up test file in index... ");
     my %test_db;
     tie %test_db, "DB_File", "$ENV{PRJ_HOME}/.verify/index.db", DB_File::O_CREAT|DB_File::O_RDWR, 0666, $DB_File::DB_BTREE or verify::tdie("Cannot tile filename: %!\n");
     if (exists $test_db{$config.'::'.$testname}) { # We found it! Close file and exit loop
-        verify::log_status("Found it!\n");
         $testfile_str = $test_db{$config.'::'.$testname};
+        verify::log_status("Found. [$testfile_str]\n");
     }
 
     if ($testfile_str eq "") {
@@ -170,24 +170,37 @@ sub TestIndex::find_test($$) {
 ###
 sub TestIndex::test_exists( $$$;$ ) {
     my ($file, $name, $config, $line_number) = @_;
-    my $found = 0;
-    my $testfile_in;
+    my $found_name = 0;
 
-    open($testfile_in, "<$testsdir/$file") or verify::tdie("Unable to open test file while checking for test!\n$!\n File: $testsdir/$file\n");
-
-    if ($line_number) {
-        seek($testfile_in, $line_number, 0);
+    TestFileParser::open($file);
+    
+    if (defined $line_number) {
+        TestFileParser::seek($line_number) or return 0;
     }
 
-    my $line = "";
-    do {
-        $line = <$testfile_in>;
-        $found = 1 if ($line =~ m/^\s*config=$config\s*$/);
-    } while ($line !~ m/^\s*endtest\s*$/ && $found == 0);
-
-    close($testfile_in);
-
-    return $found;
+    while ((my @instr = TestFileParser::get_next_instruction()) > 0) {
+        if ($instr[0] eq "endtest") {
+            if (defined $line_number) {
+                TestFileParser::close();
+                return 0;
+            }
+            else {
+                $found_name = 0;
+            }
+        }
+        elsif ($instr[0] eq "test" && $instr[3] eq $name) {
+            $found_name = 1;
+        }
+        elsif ($instr[0] eq "config" && $instr[3] eq $config) {
+            if ($found_name == 1) {
+                TestFileParser::close();
+                return 1;
+            }
+        }
+    }
+    
+    TestFileParser::close();
+    return 0;
 }
 
 ### get_test_file() ###
@@ -262,6 +275,7 @@ sub TestIndex::get_test_file($$) {
     }
     else {
         # We found the test in the index, but now we need to make sure it actually exists where it says it does.
+        verify::log_status("Checking indexed file location for test... ");
         my $found = TestIndex::test_exists($testfile_str, $testname, $config);
 
         # Couldn't find the test where the index specified! Reindex and look again.
@@ -279,7 +293,7 @@ sub TestIndex::get_test_file($$) {
             }
         }
         else {
-            verify::log_status("Found it!\n");
+            verify::log_status("Test exists.\n");
         }
     }
 
@@ -301,7 +315,7 @@ sub TestIndex::quick_parse_file($) {
     TestFileParser::open($testfile) or verify::tdie("Unable to open test file!\n$!\n File: $testfile\n");
 
     my $scope = -1;
-    my ($name, $config, $description);
+    my ($name, $config, $description, $line_number);
     my $required_flags = 0;
 
     # Loop through whole file, extracting name, config, and description.
@@ -311,6 +325,7 @@ sub TestIndex::quick_parse_file($) {
                 $name = $curr[3];
                 $scope = $curr[2];
                 $required_flags |= 1;
+                $line_number = TestFileParser::get_current_position() - 1;
             }
         }
         else {
@@ -332,13 +347,14 @@ sub TestIndex::quick_parse_file($) {
                     verify::tlog(1, "Error: One or more required fields were not found in the test file!\n$msg");
                 }
                 else {
-                    my $curr_test = {'name' => $name, 'config' => $config, 'description' => $description};
+                    my $curr_test = {'name' => $name, 'config' => $config, 'description' => $description, 'line' => $line_number};
                     push(@test_list, $curr_test);
                 }
 
                 undef $name;
                 undef $config;
                 undef $description;
+                undef $line_number;
                 $required_flags = 0;
                 $scope = -1;
             }

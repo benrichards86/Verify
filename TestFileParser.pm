@@ -38,6 +38,8 @@ sub TestFileParser::open( $ );
 sub TestFileParser::close();
 sub TestFileParser::get_next_instruction();
 sub TestFileParser::parse_parameter( $$ );
+sub TestFileParser::seek( $ );
+sub TestFileParser::get_current_position();
 sub prune( $ );
 sub plog( $$ );
 
@@ -99,6 +101,37 @@ sub TestFileParser::close() {
         $file_index = 0;
         $current_scope = -1;
         $next_scope_number = 0;
+    }
+}
+
+### seek() ###
+# Seeks to a specific line in the file. Warning: This can be unsafe as it ignores scoping within the file.
+# Parameters:
+#   - Line to seek to (relative to the beginning of the file, starting at 0).
+# Returns:
+#   - Non-zero for success, 0 for failed.
+###
+sub TestFileParser::seek( $ ) {
+    if (@file_arr && $_[0] >= 0 && $_[0] < @file_arr) {
+        $file_index = $_[0];
+        return !0;
+    }
+    else {
+        return 0;
+    }
+}
+
+### get_current_position() ###
+# Returns the current location we are in the file.
+# Returns:
+#   - Integer. 0 if haven't read yet. -1 if no file open or end of file.
+###
+sub TestFileParser::get_current_position() {
+    if ($file_index == -1 || $file_index > @file_arr) {
+        return -1;
+    }
+    else {
+        return $file_index;
     }
 }
 
