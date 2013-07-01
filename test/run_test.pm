@@ -50,6 +50,17 @@ sub run_test::run( $ ) {
    verify::tlog(0, "Run step for test:\n");
    foreach my $k (keys %test) {
        verify::tlog(0, "  $k => $test{$k}\n");
+       if (ref($test{$k}) eq 'HASH') {
+           my %curr = %{$test{$k}};
+           if (keys(%curr) > 0) {
+               foreach my $k2 (keys %curr) {
+                   verify::tlog(0, "    $k2 => $curr{$k2}\n");
+               }
+           }
+           else {
+               verify::tlog(0, "    -- empty --\n");
+           }
+       }
    }
 
    ## This is an example of parameter handling. All parameters are stored in the

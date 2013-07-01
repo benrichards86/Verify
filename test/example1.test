@@ -16,7 +16,8 @@ endtest
 test: example3
       description=Example test \#3.
       config=c2
-      define run cp1=+cp1+1
+      define run cp1=+cp1+$$
+      params=cp1=value1
 endtest
 
 test: example4

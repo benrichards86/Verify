@@ -37,6 +37,7 @@ my @instr_fields = qw/keyword modifier scope data data_action/;
 sub TestFileParser::open( $ );
 sub TestFileParser::close();
 sub TestFileParser::get_next_instruction();
+sub TestFileParser::parse_parameter( $$ );
 sub prune( $ );
 sub plog( $$ );
 
@@ -282,6 +283,25 @@ sub prune( $ ) {
     $curr =~ s/\s*$//g;
 
     return $curr;
+}
+
+
+### parse_parameter() ###
+# Takes a test parameter and parses it, applying any substitutions when necessary.
+# Parameters:
+#   - Test parameter to parse
+#   - The argument value
+# Returns:
+#   - The test parameter with substitutions applied
+###
+sub TestFileParser::parse_parameter( $$ ) {
+    my $param = $_[0];
+    my $argvalue = $_[1];
+
+    # Substitute $$ in param value for argument (or empty string, if it expected one but didn't get one). (Can avoid substitution by using \$$.)
+    $param =~ s/(?<!\\)\$\$/$argvalue/;
+
+    return $param;
 }
 
 1;

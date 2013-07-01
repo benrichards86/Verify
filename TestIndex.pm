@@ -392,6 +392,7 @@ sub TestIndex::parse_test_file($$$;$) {
     my $config = $_[1];
     my $name = $_[2];
     my @testparams = @{$_[3]} if (@_ > 3);
+    print "testparams = [ ".join(',', @testparams)." ] \n";
     
     my $msg = "";
 
@@ -514,45 +515,38 @@ sub TestIndex::parse_test_file($$$;$) {
         verify::tdie("One or more required fields were not found in the test file!\n$msg");
     }
 
-    # Handle test parameters (custom, built-in, and command-line)
-    if (@testparams) {
-        if ($test->{'params'} ne "") {
-            $test->{'params'} = $test->{'params'}.','.join(',', @testparams) if (@testparams);
+    # Handle test parameters (custom, built-in, and command-line)    
+    if ($test->{'params'} ne "") {
+        $test->{'params'} = $test->{'params'}.','.join(',', @testparams) if (@testparams);
+    }
+    else {
+        $test->{'params'} = join(',', @testparams) if (@testparams);
+    }
+    
+    # Handle test params that were defined in the test file, before calling user code, according to definition specified
+    foreach my $p (split(',', $test->{'params'})) {
+        # Split into (pname, pkey), where params can be 'pname=pkey', or just 'pname' (with 'pkey' being empty string).
+        my ($pname, @pkey_l) = split('=', $p);
+        my $pkey = join('=', @pkey_l);
+
+        # Check for values.
+        if (exists $test->{'define'}->{$pname}) {
+            my $param_for_test = $test->{'define'}->{$pname};
+            $param_for_test = TestFileParser::parse_parameter($param_for_test, $pkey);
+            $test->{'build.args'} = $test->{'build.args'}.' '.$param_for_test;
+            $test->{'run.args'} = $test->{'run.args'}.' '.$param_for_test;
         }
-        else {
-            $test->{'params'} = join(',', @testparams) if (@testparams);
+        elsif (exists $test->{'build.define'}->{$pname}) {
+            my $param_for_test = $test->{'build.define'}->{$pname};
+            $param_for_test = TestFileParser::parse_parameter($param_for_test, $pkey);
+            $test->{'build.args'} = $test->{'build.args'}.' '.$param_for_test;
+        }
+        elsif (exists $test->{'run.define'}->{$pname}) {
+            my $param_for_test = $test->{'run.define'}->{$pname};
+            $param_for_test = TestFileParser::parse_parameter($param_for_test, $pkey);
+            $test->{'run.args'} = $test->{'run.args'}.' '.$param_for_test;
         }
         
-        # Handle test params that were defined in the test file, before calling user code, according to definition specified
-        foreach my $p (split(',', $test->{'params'})) {
-            # Split into (pname, pkey), where params can be 'pname=pkey', or just 'pname' (with 'pkey' being empty string).
-            my ($pname, @pkey_l) = split('=', $p);
-            my $pkey = join('=', @pkey_l);
-            
-            # Check for values.
-            if (exists $test->{'define'}->{$pname}) {
-                my $param_for_test = $test->{'define'}->{$pname};
-                # Substitute $$ in param value for argument (or empty string, if it expected one but didn't get one). (Can avoid substitution by using \$$.)
-                $param_for_test =~ s/(?<!\\)\$\$/$pkey/;
-                
-                $test->{'build.args'} = $test->{'build.args'}.' '.$param_for_test;
-                $test->{'run.args'} = $test->{'run.args'}.' '.$param_for_test;
-            }
-            elsif (exists $test->{'build.define'}->{$pname}) {
-                my $param_for_test = $test->{'build.define'}->{$pname};
-                # Substitute $$ in param value for argument (or empty string, if it expected one but didn't get one). (Can avoid substitution by using \$$.)
-                $param_for_test =~ s/(?<!\\)\$\$/$pkey/;
-                
-                $test->{'build.args'} = $test->{'build.args'}.' '.$param_for_test;
-            }
-            elsif (exists $test->{'run.define'}->{$pname}) {
-                my $param_for_test = $test->{'run.define'}->{$pname};
-                # Substitute $$ in param value for argument (or empty string, if it expected one but didn't get one). (Can avoid substitution by using \$$.)
-                $param_for_test =~ s/(?<!\\)\$\$/$pkey/;
-                
-                $test->{'run.args'} = $test->{'run.args'}.' '.$param_for_test;
-            }
-        }
     }
     
     # Save off string of command line for logging purposes:
