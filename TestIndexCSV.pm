@@ -15,7 +15,7 @@ sub TestIndexCSV::update_index( $ );
 sub TestIndexCSV::prune_comments( $ );
 sub TestIndexCSV::find_test( $$ );
 sub TestIndexCSV::get_test_file( $$ );
-sub TestIndexCSV::parse_test_file( $$$;$ );
+sub TestIndexCSV::get_test( $$$;$ );
 sub TestIndexCSV::list_tests();
 
 # Index API

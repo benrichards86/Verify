@@ -18,7 +18,7 @@ sub TestIndex::find_test( $$ );
 sub TestIndex::test_exists( $$$;$ );
 sub TestIndex::get_test_file( $$ );
 sub TestIndex::quick_parse_file( $ );
-sub TestIndex::parse_test_file( $$$;$ );
+sub TestIndex::get_test( $$$;$ );
 sub TestIndex::list_tests();
 
 # Root directory where test files will live under
@@ -307,7 +307,7 @@ sub TestIndex::prune_comments($) {
 }
 
 ### quick_parse_file() ###
-# Does a minimal parse operation on a test file, only extracing test name, configuration, and description.
+# Does a minimal parse operation on a test file, only extracing test name, configuration, and description for all tests in the file.
 # Parameters:
 #   - Filename (with path) of the test file to parse.
 # Returns:
@@ -317,59 +317,70 @@ sub TestIndex::quick_parse_file($) {
     my ($testfile) = @_;
     my @test_list = ();
 
-    my $file_in;
-    open($file_in, "<$testfile") or return ();
-    while (<$file_in>) {
-        chomp;
-        $_ = TestIndex::prune_comments($_);
-        if (!/^\s*$/) {
-            if (/^\s*test:\s*(\w+)\s*$/) {
-                my %test_info;
-                $test_info{'name'} = $1;
-                my $curr;
-                do {
-                    $curr = <$file_in>;
-                    chomp $curr;
-                    $curr = TestIndex::prune_comments($curr);
-                    
-                    # Token check
-                    if ($curr !~ m/^\s*$/) {
-                        if ($curr =~ m/^\s*config=(\w*)\s*$/) {
-                            $test_info{'config'} = $1;
-                        }
-                        elsif ($curr =~ m/^\s*description=(.*)\s*$/) {
-                            $test_info{'description'} = $1;
-                        }
-                        elsif ($curr =~ m/^\s*test:\s*\w+\s*$/) {
-                            verify::tdie("Found 'test:' before end of current test block!\n");
-                        }
-                    }
-                } while ($curr !~ m/^\s*endtest\s*$/);
+    verify::log_status("Parsing test file [".$testfile."].\n");
+    TestFileParser::open($testfile) or verify::tdie("Unable to open test file!\n$!\n File: $testfile\n");
 
-                push(@test_list, \%test_info);
-            }
-            else {
-                verify::tdie("Malformed text in test definition file! Line: ".$file_in->input_line_number()."\n File: ".$testfile."\n ".$_."\n");
+    my $scope = -1;
+    my ($name, $config, $description);
+    my $required_flags = 0;
+
+    # Loop through whole file, extracting name, config, and description.
+    while ((my @curr = TestFileParser::get_next_instruction()) > 0) {
+        if ($scope == -1) {
+            if ($curr[0] eq 'test') {
+                $name = $curr[3];
+                $scope = $curr[2];
+                $required_flags |= 1;
             }
         }
-    }
+        else {
+            if ($curr[0] eq 'config') {
+                $config = $curr[3];
+                $required_flags |= 0x4;
+            }
+            elsif ($curr[0] eq 'description') {
+                $description = $curr[3];
+                $required_flags |= 0x2;            
+            }
+            elsif ($curr[0] eq 'endtest') {
+                # Check for required fields
+                if ($required_flags != 0x7) {
+                    my $msg = "";
+                    $msg = "$msg Required field 'name' was not found.\n" if !($required_flags & 0x1);
+                    $msg = "$msg Required field 'description' was not found.\n" if !($required_flags & 0x2);
+                    $msg = "$msg Required field 'config' was not found.\n" if !($required_flags & 0x4);
+                    verify::tlog(1, "Error: One or more required fields were not found in the test file!\n$msg");
+                }
+                else {
+                    my $curr_test = {'name' => $name, 'config' => $config, 'description' => $description};
+                    push(@test_list, $curr_test);
+                }
 
-    close($file_in);
+                undef $name;
+                undef $config;
+                undef $description;
+                $required_flags = 0;
+                $scope = -1;
+            }
+        }
+    } 
+
+    TestFileParser::close();
 
     return @test_list;
 }
 
 sub init_test() {
     my $test = {"name" => "",          # Required: Identifies the test
-             "description" => "",   # Required: Describes the test
-             "config" => "",        # Required: Testbench config associated with the test
-             "build.args" => "",    # These are custom parameters passed directly to the build tool
-             "run.args" => "",      # These are custom parameters passed directly to the run tool
-             "params" => "",        # This is the list of test parameters passed in the file and/or on the command-line as comma-separated values
-             "define" => {},        # Used to define custom parameters for both build and run steps
-             "build.define" => {},  # Same as above, but only build step
-             "run.define" => {}};   # Same as above, but only run step
-
+                "description" => "",   # Required: Describes the test
+                "config" => "",        # Required: Testbench config associated with the test
+                "build.args" => "",    # These are custom parameters passed directly to the build tool
+                "run.args" => "",      # These are custom parameters passed directly to the run tool
+                "params" => "",        # This is the list of test parameters passed in the file and/or on the command-line as comma-separated values
+                "define" => {},        # Used to define custom parameters for both build and run steps
+                "build.define" => {},  # Same as above, but only build step
+                "run.define" => {}};   # Same as above, but only run step
+    
     return $test;
 }
 
@@ -383,7 +394,7 @@ sub init_test() {
 # Returns:
 #   - A reference to the test information stored in a relational array in memory
 ###
-sub TestIndex::parse_test_file($$$;$) {
+sub TestIndex::get_test($$$;$) {
     my $test = init_test();
 
     my $required_flags = 0;

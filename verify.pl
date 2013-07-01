@@ -245,7 +245,7 @@ sub log_status($) {
 
 ### parse_tool_args() ###
 # Parses command-line options passed to the script. If modified, please update the documentation to describe the new options or changed functionality.
-#  NOTE: This also will parse the list of tests to run, use that to derive what test files to open, and will call parse_test_file() to load each test.
+#  NOTE: This also will parse the list of tests to run, use that to derive what test files to open, and will call get_test() to load each test.
 ###
 sub parse_tool_args() {
     Getopt::Long::GetOptions('quiet|q'       => \$options{'quiet'}, 
@@ -315,7 +315,7 @@ sub parse_tool_args() {
         # Get test file
         my $file = Index::get_test_file($config, $testname);
         # Parse test file
-        my $currtest = Index::parse_test_file($file, $config, $testname, \@testparams);
+        my $currtest = Index::get_test($file, $config, $testname, \@testparams);
     
         # Store test (as many times as indicated by $repeat)
     for (my $n = 0; $n < $repeat; $n++) {
