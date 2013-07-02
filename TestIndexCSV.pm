@@ -293,7 +293,7 @@ sub TestIndexCSV::get_test_file($$) {
     ($testfile_str, $line_number) = TestIndexCSV::find_test($config, $testname);
 
     # Check if we found the file. If not, update the index (if not up to date).
-    if ($testfile_str eq "" || !-e $testsdir.'/'.$testfile_str) { # It will remain unset if we didn't find it. Also trigger if it's indexed but the test file doesn't exist.
+    if (!defined $testfile_str || !-e $testsdir.'/'.$testfile_str) { # It will remain unset if we didn't find it. Also trigger if it's indexed but the test file doesn't exist.
         if ($index_up2date) {
             verify::tdie("The test ".$config."::".$testname." could not be found!\n");
         }
@@ -308,7 +308,7 @@ sub TestIndexCSV::get_test_file($$) {
         # Now that the index is updated, search for the test again...
         ($testfile_str, $line_number) = TestIndexCSV::find_test($config, $testname);
 
-        if ($testfile_str eq "") { # Still can't find it? Then it must not exist.
+        if (!defined $testfile_str) { # Still can't find it? Then it must not exist.
             verify::tdie("The test ".$config."::".$testname." could not be found!\n");
         }
     }
