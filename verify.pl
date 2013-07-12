@@ -83,8 +83,9 @@ $verify::build_dir = "";
 $verify::run_dir = "";
 $verify::testsdir = $ENV{'PRJ_HOME'}."/verification/tests";
 
-$verify::VERSION = "Verify v2.2.2";
+$verify::VERSION = "Verify v2.3";
 $verify::AUTHOR = "Benjamin D. Richards";
+$verify::REPOSITORY = "https://github.com/benrichards86/Verify";
 
 ################################################################################
 ## Function prototypes
@@ -274,7 +275,7 @@ sub parse_tool_args() {
                              'help|h'        => sub { Pod::Usage::pod2usage(-verbose => 1, -exitval => 'NOEXIT'); finish(0); },
                              'man'           => sub { Pod::Usage::pod2usage(-verbose => 2, -exitval => 'NOEXIT'); finish(0); },
                              'man2html'      => sub { Pod::Html::pod2html("--header", "--infile=$0", "--outfile=verify.html"); finish(0); },
-                             'version'       => sub { tlog(0, $verify::VERSION." developed by ".$verify::AUTHOR."\n"); finish(0); }
+                             'version'       => sub { tlog(0, $verify::VERSION." developed by ".$verify::AUTHOR." [".$verify::REPOSITORY."]\n"); finish(0); }
                              ) or Pod::Usage::pod2usage(-verbose => 0, -exitval => 'NOEXIT') and tdie("Command option parsing failed.\n");
 
     # Here, we can now check for required environment variables (allows us to display help without errors in a fresh install).
@@ -1075,6 +1076,38 @@ B<NOTE:> F<Your test source> contains the code for your actual test. It may invo
 =head1 VERSIONS
 
 =over 3
+
+=item *
+
+I<v.2.3, July 12, 2013>
+
+=over 3
+
+=item Bugfixes:
+
+=over 3
+
+=item *
+
+Fixed some bugs in TestIndexCSV where if a new testfile has been added to the file tree, it wouldn't be properly indexed.
+
+=back
+
+=item Enhancements:
+
+=over 3
+
+=item *
+
+Refactored test file parsing code, consolidating it into a module called TestFileParser.pm. This module simplifies test file reading and returns test file instructions using a standard format. TestIndex and TestIndexCSV now utilize this module for all test file parsing.
+
+=item *
+
+Aside from moving all test file parsing code to use the TestFileParser module, also did a lot of clean-up surrounding indexing code. Added some debug switches (accessible in the source code) to help with SQL statement debug.
+
+=back
+
+=back
 
 =item *
 
