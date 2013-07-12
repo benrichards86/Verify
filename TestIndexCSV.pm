@@ -27,6 +27,9 @@ sub TestIndexCSV::next_id();
 
 my $dbh;
 
+### Debug toggle. Non-zero enables echoing of SQL statements.
+my $debug_sql = 0;
+
 ### next_id() ###
 # Calculates the next available ID number from index database. For use in SQL statements.
 # Returns:
@@ -35,8 +38,8 @@ my $dbh;
 sub TestIndexCSV::next_id() {
     my ($self, $sth, @params);
     my $dbh = $sth->{Database};
-    my @row = TestIndexCSV::query_index("SELECT COUNT(id) + 1 FROM tests");
-    return $row[0];
+    my @row = TestIndexCSV::query_index("SELECT MAX( id ) FROM tests");
+    return $row[0] + 1;
 }
 
 ### create_index() ###
@@ -90,7 +93,7 @@ sub TestIndexCSV::close_index( ;$ ) {
 sub TestIndexCSV::query_index( $;@ ) {
     my @results = ();
     my $sql = shift @_;
-    #verify::log_status("Executing SQL> ".$sql."; (".join(",",@_).")\n");
+    verify::log_status("Executing SQL> ".$sql."; (".join(",",@_).")\n") if ($debug_sql);
 
     my $sth = $dbh->prepare($sql);
     $sth->execute(@_);
@@ -110,7 +113,7 @@ sub TestIndexCSV::query_index_fast( $ ) {
     my $sql = shift @_;
     my @results = ();
 
-    #verify::log_status("Executing SQL> ".$sql.";\n");
+    verify::log_status("Executing SQL> ".$sql.";\n") if ($debug_sql);
     return $dbh->do($sql);
 }
 
@@ -124,13 +127,13 @@ sub TestIndexCSV::query_index_fast( $ ) {
 ###
 sub TestIndexCSV::query_index_all( $;@ ) {
     my $sql = shift @_;
-    #verify::log_status("Executing SQL> ".$sql."; (".join(",",@_).")\n");
+    verify::log_status("Executing SQL> ".$sql."; (".join(",",@_).")\n") if ($debug_sql);
     my $sth = $dbh->prepare($sql);
     $sth->execute(@_);
 
     my $ary = $sth->fetchall_arrayref();
 
-    #verify::log_status("SQL results> Returned ".@{$ary}." rows.\n");
+    verify::log_status("SQL results> Returned ".@{$ary}." rows.\n") if ($debug_sql);
     return $ary;
 }
 
@@ -199,7 +202,8 @@ sub update_index($) {
 
         # Checks if current found file is already indexed. If not, add its tests.
         my @results = TestIndexCSV::query_index_all("SELECT * FROM tests WHERE file='".$currfile."'");
-        if (@results == 0) {
+
+        if (@{$results[0]} == 0) {
             my @tests = TestIndex::quick_parse_file($testsdir.'/'.$currfile);
             if (@tests) {
                 foreach my $test (@tests) {
@@ -232,7 +236,7 @@ sub update_index($) {
 sub TestIndexCSV::find_test($$) {
     my ($config, $testname) = @_;
     my $testfile_str = "";
-    verify::log_status("Looking up test file in index... ");
+    verify::log_status("Looking up test file in index...\n");
     my @results = TestIndexCSV::query_index("SELECT file, line_number FROM tests WHERE NAME=? AND CONFIG=?", $testname, $config);
     if (@results > 0) { # We found it!
         verify::log_status("Found. [$results[0]:$results[1]]\n");

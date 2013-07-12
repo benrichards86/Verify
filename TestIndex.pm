@@ -46,6 +46,7 @@ sub TestIndex::recursive_scan($$) {
     # Index any files in this directory
     foreach my $curr_file (<$root_dir/*.test>) {
         $curr_file =~ s|$testsdir\/||;
+        print "Parsing: $curr_file\n";
         $handler->($curr_file);
     }
 }

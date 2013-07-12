@@ -1,0 +1,4 @@
+test: example4
+  config=c3
+  description=Example test #4
+endtest
