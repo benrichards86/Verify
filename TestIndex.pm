@@ -399,7 +399,6 @@ sub TestIndex::get_test($$$;$) {
     my $config = $_[1];
     my $name = $_[2];
     my @testparams = @{$_[3]} if (@_ > 3);
-    print "testparams = [ ".join(',', @testparams)." ] \n";
     
     my $msg = "";
 
