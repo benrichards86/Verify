@@ -1,13 +1,23 @@
 #!/usr/bin/perl -w
 
-#
+## verify.pl
+## A simple verification tool to manage the definition, building, and running of tests in a verification environment.
+## Copyright (C) 2012,2013  Benjamin D. Richards
 ##
-###
-## Verify - A simple verification tool to manage the definition, building, and running of tests in a verification environment.
-## Written by Benjamin D. Richards
-###
+## This program is free software; you can redistribute it and/or modify
+## it under the terms of the GNU General Public License as published by
+## the Free Software Foundation; either version 2 of the License, or
+## (at your option) any later version.
 ##
-#
+## This program is distributed in the hope that it will be useful,
+## but WITHOUT ANY WARRANTY; without even the implied warranty of
+## MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+## GNU General Public License for more details.
+##
+## You should have received a copy of the GNU General Public License along
+## with this program; if not, write to the Free Software Foundation, Inc.,
+## 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+
 
 use strict;
 use Cwd;
@@ -62,6 +72,9 @@ my $is_child;
 my $report_file;
 my $report_semaphore;
 
+# Disable warnings for PRJ_HOME if not initialized
+no warnings 'uninitialized';
+
 # Options hash - configurations info for script
 my %options = ("quiet" => 0,
                "build" => 1,
@@ -85,6 +98,7 @@ $verify::testsdir = $ENV{'PRJ_HOME'}."/verification/tests";
 
 $verify::VERSION = "Verify v2.3.0";
 $verify::AUTHOR = "Benjamin D. Richards";
+$verify::COPYRIGHT = "Verify comes with ABSOLUTELY NO WARRANTY. This is free software, and you are welcome to redistribute\nit under certain conditions. For details, read COPYRIGHT.\n";
 $verify::REPOSITORY = "https://github.com/benrichards86/Verify";
 
 ################################################################################
@@ -275,7 +289,7 @@ sub parse_tool_args() {
                              'help|h'        => sub { Pod::Usage::pod2usage(-verbose => 1, -exitval => 'NOEXIT'); finish(0); },
                              'man'           => sub { Pod::Usage::pod2usage(-verbose => 2, -exitval => 'NOEXIT'); finish(0); },
                              'man2html'      => sub { Pod::Html::pod2html("--header", "--infile=$0", "--outfile=verify.html"); finish(0); },
-                             'version'       => sub { tlog(0, $verify::VERSION." developed by ".$verify::AUTHOR." [".$verify::REPOSITORY."]\n"); finish(0); }
+                             'version'       => sub { tlog(0, $verify::VERSION." developed by ".$verify::AUTHOR." [".$verify::REPOSITORY."]\n\n".$verify::COPYRIGHT."\n"); finish(0); }
                              ) or Pod::Usage::pod2usage(-verbose => 0, -exitval => 'NOEXIT') and tdie("Command option parsing failed.\n");
 
     # Here, we can now check for required environment variables (allows us to display help without errors in a fresh install).
@@ -1536,6 +1550,10 @@ Initial revision.
 =head1 AUTHORS
 
 Benjamin D. Richards
+
+=head1 COPYRIGHT
+
+This tool is licensed under the GNU GENERAL PUBLIC LICENSE Version 2 (GPLv2). See F<COPYRIGHT> for its terms.
 
 =cut
 
