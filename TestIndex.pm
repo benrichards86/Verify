@@ -184,15 +184,19 @@ sub TestIndex::find_test($$) {
 #   - 1 for found, 0 for not found.
 ###
 sub TestIndex::test_exists( $$$;$ ) {
-    my ($file, $name, $config, $line_number) = @_;
+    my ($file, $name, $config, $line_number);
     my $found_name = 0;
 
-    TestFileParser::open($file);
-    
     if (scalar(@_) > 3) {
+        ($file, $name, $config, $line_number) = @_;
         TestFileParser::seek($line_number) or return 0;
     }
+    else {
+        ($file, $name, $config) = @_;
+    }
 
+    TestFileParser::open($testsdir.'/'.$file) or return 0;
+    
     while ((my @instr = TestFileParser::get_next_instruction()) > 0) {
         if ($instr[0] eq "endtest") {
             if (defined $line_number) {
