@@ -96,7 +96,7 @@ $verify::build_dir = "";
 $verify::run_dir = "";
 $verify::testsdir = $ENV{'PRJ_HOME'}."/verification/tests";
 
-$verify::VERSION = "Verify v2.3.0";
+$verify::VERSION = "Verify v2.3.1";
 $verify::AUTHOR = "Benjamin D. Richards";
 $verify::COPYRIGHT = "Verify comes with ABSOLUTELY NO WARRANTY. This is free software, and you are welcome to redistribute\nit under certain conditions. For details, read COPYRIGHT.\n";
 $verify::REPOSITORY = "https://github.com/benrichards86/Verify";
@@ -1090,6 +1090,18 @@ B<NOTE:> F<Your test source> contains the code for your actual test. It may invo
 =head1 VERSIONS
 
 =over 3
+
+=item *
+
+I<v.2.3.1, July 19, 2013>
+
+=over 3
+
+=item *
+
+Licensing under GPLv2.
+
+=back
 
 =item *
 
