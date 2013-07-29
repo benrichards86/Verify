@@ -1097,9 +1097,29 @@ I<v.2.3.1, July 19, 2013>
 
 =over 3
 
+=item Bugfixes:
+
+=over 3
+
 =item *
 
-Licensing under GPLv2.
+Reimplemented check for optional parameters in TestIndex so that they will not trigger false positives.
+
+=item *
+
+Disabling warning messages for $PRJ_HOME when simply getting help/version information when that variable isn't set in the environment.
+
+=back
+
+=item Enhancements:
+
+=over 3
+
+=item *
+
+Putting the tool under GPLv2 and adding copyright notices to files.
+
+=back
 
 =back
 
