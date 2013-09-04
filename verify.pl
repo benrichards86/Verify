@@ -569,10 +569,11 @@ TEST_LOOP: foreach my $p_curr_test (@tests) {
             # Here, wait for child processes to complete so we can fork off new ones without going over the specified limit
             while ( keys(%children) >= $options{'parallel'}) {
                 my $kid = waitpid(-1, 0);
+                my $kid_status = $?;
 
                 if ($kid > 0) {
-                    log_status("Child process (PID ".$kid.", test ".$children{$kid}.") exited with status ".$?.".\n");
-                    
+                    log_status("Child process (PID ".$kid.", test ".$children{$kid}.") exited with status ".$kid_status.".\n");
+                    $error_status |= $kid_status;
                     delete $children{$kid};
                 }
             }
