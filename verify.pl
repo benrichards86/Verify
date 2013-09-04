@@ -483,7 +483,7 @@ sub finish_child( $ ) {
     if ($options{'parallel'} > 0) {
         log_status("Entering: ".Cwd::abs_path("..")."\n");
         chdir "..";
-
+        log_status("Exiting with status: ".$error_status);
         POSIX::_exit($error_status);
     }
 }
