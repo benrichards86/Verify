@@ -275,7 +275,8 @@ sub TestIndex::get_test_file($$) {
     # Check if we found the file. If not, update the index (if not up to date).
     if ($testfile_str eq "" || !-e $testsdir.'/'.$testfile_str) { # It will remain unset if we didn't find it. Also trigger if it's indexed but the test file doesn't exist.
         if ($index_up2date) {
-            verify::tdie("The test ".$config."::".$testname." could not be found!\n");
+            verify::tlog(1, "The test ".$config."::".$testname." could not be found!\n");
+            return "";
         }
         else {
             # Index may not be up to date, so update the index now and then search again!
@@ -289,7 +290,8 @@ sub TestIndex::get_test_file($$) {
         $testfile_str = TestIndex::find_test($config, $testname);
 
         if ($testfile_str eq "") { # Still can't find it? Then it must not exist.
-            verify::tdie("The test ".$config."::".$testname." could not be found!\n");
+            verify::tlog(1, "The test ".$config."::".$testname." could not be found!\n");
+            return "";
         }
     }
     else {
@@ -307,7 +309,8 @@ sub TestIndex::get_test_file($$) {
 
                 $testfile_str = TestIndex::find_test($config, $testname);
                 if ($testfile_str eq "") { # Still not found? It doesn't exist.
-                    verify::tdie("The test ".$config."::".$testname." could not be found!\n");
+                    verify::tlog(1, "The test ".$config."::".$testname." could not be found!\n");
+                    return "";
                 }
             }
         }

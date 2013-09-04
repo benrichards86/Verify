@@ -176,21 +176,21 @@ sub init() {
     parse_tool_args();
 
     if ($options{'report'}) {
-    $report_semaphore = Thread::Semaphore->new();
-    $report_semaphore->down();
-    my $ret = open($report_file, ">$root_dir/report.txt");
-    if (!$ret) {
-        tlog(1, "Could not create report file!$!\n");
-        log_status("Could not create report file!\n");
-        $options{'report'} = 0;
-    }
-    else {
+        $report_semaphore = Thread::Semaphore->new();
+        $report_semaphore->down();
+        my $ret = open($report_file, ">$root_dir/report.txt");
+        if (!$ret) {
+            tlog(1, "Could not create report file!$!\n");
+            log_status("Could not create report file!\n");
+            $options{'report'} = 0;
+        }
+        else {
             $report_file->autoflush(1);
-        my $header = "Test Results: ($now)\n--------------------------------------------------------------------------------\n";
-        print $report_file $header;
-        log_status("Report file created at: $root_dir/report.txt [FILEHANDLE $report_file]\n");
-    }
-    $report_semaphore->up();
+            my $header = "Test Results: ($now)\n--------------------------------------------------------------------------------\n";
+            print $report_file $header;
+            log_status("Report file created at: $root_dir/report.txt [FILEHANDLE $report_file]\n");
+        }
+        $report_semaphore->up();
     }
 
     unshift @INC, $options{'libsdir'};
@@ -208,7 +208,7 @@ sub init() {
 # Parameters:
 #   - Message to output on exit
 ###
-sub tdie($) {
+sub tdie( $ ) {
     my ($str) = @_;
     tlog(1, $str);
     log_status("Script ended prematurely: $str");
@@ -221,7 +221,7 @@ sub tdie($) {
 # Parameters:
 #   - Logging level. 0 => standard output, 1 => error output
 ###
-sub tlog($$) {
+sub tlog( $$ ) {
     my ($level, $str) = @_;
 
     if ($level >= 1) {
@@ -240,7 +240,7 @@ sub tlog($$) {
 # Parameters:
 #   - Message to log
 ###
-sub log_status($) {
+sub log_status( $ ) {
     $sf_semaphore->down();
     my ($str) = @_;
 
@@ -275,22 +275,22 @@ sub parse_tool_args() {
                              'email|e=s'     => sub { $options{'email'} = 1; $email_list = $_[1] },
                              'print|p'       => sub { Index::list_tests(); finish(0); },
                              'parallel|P=i'  => sub {
-                                                   my $n = $_[1];
-                                                   if ($n < 1) {
-                                                       # First, log error message to our log files
-                                                       log_status("Invalid number of parallel tests (".$n."). Number should be greater than or equal to 1.\n");
-                                                       die("Invalid number of parallel tests (".$n."). Number should be greater than or equal to 1.\n");
-                                                   }
-                                                   else {
-                                                       $options{'parallel'} = $n;
-                                                       $options{'quiet'} = 1;
-                                                   }
-                                                },
+                                 my $n = $_[1];
+                                 if ($n < 1) {
+                                     # First, log error message to our log files
+                                     log_status("Invalid number of parallel tests (".$n."). Number should be greater than or equal to 1.\n");
+                                     die("Invalid number of parallel tests (".$n."). Number should be greater than or equal to 1.\n");
+                                 }
+                                 else {
+                                     $options{'parallel'} = $n;
+                                     $options{'quiet'} = 1;
+                                 }
+                             },
                              'help|h'        => sub { Pod::Usage::pod2usage(-verbose => 1, -exitval => 'NOEXIT'); finish(0); },
                              'man'           => sub { Pod::Usage::pod2usage(-verbose => 2, -exitval => 'NOEXIT'); finish(0); },
                              'man2html'      => sub { Pod::Html::pod2html("--header", "--infile=$0", "--outfile=verify.html"); finish(0); },
                              'version'       => sub { tlog(0, $verify::VERSION." developed by ".$verify::AUTHOR." [".$verify::REPOSITORY."]\n\n".$verify::COPYRIGHT."\n"); finish(0); }
-                             ) or Pod::Usage::pod2usage(-verbose => 0, -exitval => 'NOEXIT') and tdie("Command option parsing failed.\n");
+        ) or Pod::Usage::pod2usage(-verbose => 0, -exitval => 'NOEXIT') and tdie("Command option parsing failed.\n");
 
     # Here, we can now check for required environment variables (allows us to display help without errors in a fresh install).
     if (!defined $ENV{'PRJ_HOME'}) {
@@ -315,13 +315,13 @@ sub parse_tool_args() {
         Pod::Usage::pod2usage(-verbose => 0, -exitval => 'NOEXIT') and tdie("Invalid config::testname pair: '$curr'\n") if ($curr !~ m/::/);
 
         my ($config, $name) = split "::", $curr;
-    my $repeat = 1;
+        my $repeat = 1;
 
-    # Check for repeats
-    if ($name =~ m/(.+)\{(\d+)\}/) {
-        $name = $1;
-        $repeat = $2;
-    }
+        # Check for repeats
+        if ($name =~ m/(.+)\{(\d+)\}/) {
+            $name = $1;
+            $repeat = $2;
+        }
         
         # name can have comma-separated test params (first token is test name)
         my @testparams = split ',', $name;
@@ -329,17 +329,20 @@ sub parse_tool_args() {
         
         # Get test file
         my $file = Index::get_test_file($config, $testname);
-        # Parse test file
-        my $currtest = Index::get_test($file, $config, $testname, \@testparams);
-    
-        # Store test (as many times as indicated by $repeat)
-    for (my $n = 0; $n < $repeat; $n++) {
-        my %currtest_cpy = %$currtest;
-        $currtest_cpy{'id'} = $test_id;
-        $currtest_cpy{'logstr'} = $currtest_cpy{'logstr'}."(".$currtest_cpy{'id'}.")";
-        push(@tests, \%currtest_cpy);
-        $test_id ++;
-    }
+
+        if ($file ne "") {
+            # Parse test file
+            my $currtest = Index::get_test($file, $config, $testname, \@testparams);
+            
+            # Store test (as many times as indicated by $repeat)
+            for (my $n = 0; $n < $repeat; $n++) {
+                my %currtest_cpy = %$currtest;
+                $currtest_cpy{'id'} = $test_id;
+                $currtest_cpy{'logstr'} = $currtest_cpy{'logstr'}."(".$currtest_cpy{'id'}.")";
+                push(@tests, \%currtest_cpy);
+                $test_id ++;
+            }
+        }
     }
 }
 
@@ -383,7 +386,7 @@ sub init_logs() {
 # Exits the tool with a status code. Use this in place of Perl's built-in exit() elsewhere in the script. It also will handle log file cleanup and 
 # emailing (if enabled).
 ###
-sub finish($) {
+sub finish( $ ) {
     my ($status) = @_;
 
     finish_logs();
@@ -436,7 +439,7 @@ sub finish_logs() {
 #    - The command to run in a shell.
 # Returns:
 #    - The error code of the command after it exits the shell.
-sub run_command($) {
+sub run_command( $ ) {
     my ($command) = @_;
 
     my $quiet_option = '';
@@ -473,7 +476,7 @@ sub run_command($) {
 # Parameters:
 #   - The error code to exit with
 ###
-sub finish_child($) {
+sub finish_child( $ ) {
     my ($error_status) = @_;
 
     # If running in parallel mode, exit this fork
@@ -491,17 +494,17 @@ sub finish_child($) {
 #   - The current test we are logging
 #   - The error status from the test run
 ###
-sub log_report($$) {
+sub log_report( $$ ) {
     if ($report_file && $report_file->opened) {
-    $report_semaphore->down();
-    my ($test, $status) = @_;
-    if ($status == 0) { # passed
-        seek($report_file, 0, 2) and print $report_file "pass".$test->{'id'}.".log\t".$test->{'logstr'}."\tPASS\n";
-    }
-    else {
-        seek($report_file, 0, 2) and print $report_file "fail".$test->{'id'}.".log\t".$test->{'logstr'}."\tFAIL\n";
-    }
-    $report_semaphore->up();
+        $report_semaphore->down();
+        my ($test, $status) = @_;
+        if ($status == 0) { # passed
+            seek($report_file, 0, 2) and print $report_file "pass".$test->{'id'}.".log\t".$test->{'logstr'}."\tPASS\n";
+        }
+        else {
+            seek($report_file, 0, 2) and print $report_file "fail".$test->{'id'}.".log\t".$test->{'logstr'}."\tFAIL\n";
+        }
+        $report_semaphore->up();
     }
 }
 
@@ -646,8 +649,8 @@ TEST_LOOP: foreach my $p_curr_test (@tests) {
                 log_status("Entering: ".Cwd::abs_path("..")."\n");
                 chdir "..";
 
-        log_report(\%curr_test, $test_status);
-        
+                log_report(\%curr_test, $test_status);
+                
                 # Print out pass/fail status for each test as it completes
                 $quietmode = $options{'quiet'}; # Backup quiet mode setting
                 $options{'quiet'} = 0;
@@ -667,14 +670,14 @@ TEST_LOOP: foreach my $p_curr_test (@tests) {
                 # Link logs to global area and rename if running multiple tests
                 system("ln -sf ".$root_dir."/verify/".$curr_test{'id'}."/".$verify::logfile." ../".(($test_status > 0) ? "fail".$curr_test{'id'}.".log" : "pass".$curr_test{'id'}.".log" )) if (@tests > 1);
 
-        if ($options{'parallel'} > 0 && $pid == 0) {
-            # If we're in parallel mode and I'm a child process, I should exit, instead of continuing to loop.
-            finish_child($test_status);
-        }
-        else {
-            # If we're not in parallel mode, I should continue to loop.
-            next TEST_LOOP;
-        }
+                if ($options{'parallel'} > 0 && $pid == 0) {
+                    # If we're in parallel mode and I'm a child process, I should exit, instead of continuing to loop.
+                    finish_child($test_status);
+                }
+                else {
+                    # If we're not in parallel mode, I should continue to loop.
+                    next TEST_LOOP;
+                }
             }
         }
         
@@ -698,7 +701,7 @@ TEST_LOOP: foreach my $p_curr_test (@tests) {
             
         }
         
-    log_report(\%curr_test, $test_status);
+        log_report(\%curr_test, $test_status);
 
         log_status("Entering: ".Cwd::abs_path("..")."\n");
         chdir "..";
