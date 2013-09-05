@@ -402,7 +402,7 @@ sub finish( $ ) {
 
     chdir $root_dir;
     
-    exit($status);
+    exit(($status & 0x7F) ? ($status | 0x80) : ($status >> 8));
 }
 
 ### send_email() ###
