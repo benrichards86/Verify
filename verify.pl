@@ -746,7 +746,9 @@ if (@tests == 1) {
 if ($options{'parallel'} > 0) {
     log_status("Waiting for all child processes to complete...\n");
     while ((my $kid = waitpid(-1, 0)) > 0) {
-        log_status("Child process (PID ".$kid.", test ".$children{$kid}.") exited with status ".$?.".\n");
+        my $kid_status = $?;
+        log_status("Child process (PID ".$kid.", test ".$children{$kid}.") exited with status ".$kid_status.".\n");
+        $error_status |= $kid_status;
         delete $children{$kid};
     }
 
