@@ -484,7 +484,7 @@ sub finish_child( $ ) {
         log_status("Entering: ".Cwd::abs_path("..")."\n");
         chdir "..";
         log_status("Exiting with status: ".$error_status."\n");
-        POSIX::_exit($error_status);
+        POSIX::_exit(($error_status & 0x7F) ? ($error_status | 0x80) : ($error_status >> 8));
     }
 }
 
