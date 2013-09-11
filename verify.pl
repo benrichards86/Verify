@@ -556,8 +556,6 @@ TEST_LOOP: foreach my $p_curr_test (@tests) {
     my $test_status = 0;
 
     {
-        #my $test_count = $test_count; # Save local copy of $test_count variable
-
         # String for logging...
         my $testline = $curr_test{'config'}."::".$curr_test{'name'}.(($curr_test{'params'} ne "") ? ",".$curr_test{'params'} : "" )."(".$curr_test{'id'}.")";
 
@@ -683,7 +681,7 @@ TEST_LOOP: foreach my $p_curr_test (@tests) {
         }
         
         
-        # Simulation flow
+        # Run flow
         if ($options{'run'} == 1) {
             mkdir $verify::run_dir or tdie("Unable to create run directory! $!\n") if (!-d $verify::run_dir);
             log_status("Entering: ".$verify::run_dir."\n");
